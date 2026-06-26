@@ -899,6 +899,19 @@ function App() {
     const push = (r) => setStack((s) => [...s, r]);
     const pop = () => setStack((s) => s.slice(0, -1));
     const goTab = (t) => { setStack([]); setSheet(null); setTab(t); if(t==="me"&&!pass&&!winbackShown){setTimeout(()=>{ if(_scrTab.current==="me") setSheet({type:"winback"}); },5000);} };
+    const _sheetRef = useRef(sheet); _sheetRef.current = sheet;
+    const _stackRef = useRef(stack); _stackRef.current = stack;
+    const _navDepth = stack.length + (sheet ? 1 : 0);
+    const _prevDepth = useRef(0);
+    useEffect(() => {
+        if (_navDepth > _prevDepth.current) { try { window.history.pushState({ dvDepth: _navDepth }, ""); } catch (e) { } }
+        _prevDepth.current = _navDepth;
+    }, [_navDepth]);
+    useEffect(() => {
+        const onPop = () => { if (_sheetRef.current) setSheet(null); else if (_stackRef.current.length) setStack((s) => s.slice(0, -1)); };
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+    }, []);
     const flash = (m) => { if (typeof __toastFn === "function") __toastFn(m); };
     const track = (ev, props) => { try { (window.__dv = window.__dv || []).push(Object.assign({ ev: ev, t: Date.now() }, props || {})); } catch (e) { } };
     useEffect(() => {
@@ -1303,6 +1316,9 @@ function App() {
                 (top === null || top === void 0 ? void 0 : top.type) === "collection" && React.createElement(CollectionScreen, { cid: top.cid }),
                 (top === null || top === void 0 ? void 0 : top.type) === "notifications" && React.createElement(NotificationsScreen, null),
                 (top === null || top === void 0 ? void 0 : top.type) === "genre" && React.createElement(GenreScreen, { initCat: top.cat }),
+                (top === null || top === void 0 ? void 0 : top.type) === "gacha" && React.createElement(GachaScreen, { tab: top.tab }),
+                (top === null || top === void 0 ? void 0 : top.type) === "redpacket" && React.createElement(RedPacketScreen, null),
+                (top === null || top === void 0 ? void 0 : top.type) === "newbie" && React.createElement(NewbieScreen, null),
                 (top === null || top === void 0 ? void 0 : top.type) === "creator" && React.createElement(CreatorScreen, null)),
             !top && (React.createElement(React.Fragment, null,
                 React.createElement("div", { style: { paddingBottom: "max(96px, calc(88px + env(safe-area-inset-bottom, 0px)))" } },
@@ -1553,7 +1569,7 @@ function App() {
                                 b.rating)))))));
                 })(),
                 React.createElement(React.Fragment, null,
-                    React.createElement("div", { className: "grid grid-cols-3", style: { gap: 10, padding: "12px 16px 2px" } }, [["Ph\u00E2n lo\u1EA1i", Grid, () => push({ type: "genre" })], ["BXH", Trophy, () => goTab("rank")], ["Ho\u00E0n th\u00E0nh", Check, () => push({ type: "genre" })], ["Trailer", Film, () => goTab("clip")], ["S\u00E1ch \u0111\u01A1n", List, () => push({ type: "collection", cid: "col1" })], ["Qu\u00E0", Gift, () => goTab("quest")]].map(([lb, Ic, fn]) => React.createElement("button", { key: lb, onClick: fn, className: "flex items-center", style: { gap: 8, padding: "10px 12px", borderRadius: 12, background: C.surface, border: `1px solid ${C.line}` } },
+                    level === 1 && !hasDeposited && React.createElement("div", { onClick: () => push({ type: "newbie" }), className: "fade", style: { margin: "10px 16px 2px", borderRadius: 16, background: "linear-gradient(135deg," + C.gold + "26," + C.surface + ")", border: "1px solid " + C.gold + "55", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" } }, React.createElement("span", { style: { fontSize: 30 } }, "\uD83C\uDF81"), React.createElement("div", { style: { flex: 1, minWidth: 0 } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 15, color: C.gold } }, "H\u00E0nh tr\u00ECnh t\u00E2n th\u1EE7 7 ng\u00E0y"), React.createElement("div", { style: { fontSize: 12, color: C.sub, marginTop: 2 } }, "Nh\u1EADn t\u1EDBi 275 coin \u00B7 \u0111i\u1EC3m danh m\u1ED7i ng\u00E0y")), React.createElement("span", { style: { fontSize: 18, color: C.gold } }, "\u203A")), React.createElement("div", { className: "grid grid-cols-3", style: { gap: 10, padding: "12px 16px 2px" } }, [["Ph\u00E2n lo\u1EA1i", Grid, () => push({ type: "genre" })], ["BXH", Trophy, () => goTab("rank")], ["Nh\u00E2n v\u1EADt", Sparkles, () => push({ type: "gacha" })], ["Trailer", Film, () => goTab("clip")], ["S\u00E1ch \u0111\u01A1n", List, () => push({ type: "collection", cid: "col1" })], ["L\u00EC x\u00EC", Gift, () => push({ type: "redpacket" })]].map(([lb, Ic, fn]) => React.createElement("button", { key: lb, onClick: fn, className: "flex items-center", style: { gap: 8, padding: "10px 12px", borderRadius: 12, background: C.surface, border: `1px solid ${C.line}` } },
                         React.createElement("div", { style: { width: 30, height: 30, borderRadius: 8, background: `${C.jade}1A`, display: "flex", alignItems: "center", justifyContent: "center" } }, React.createElement(Ic, { size: 16, color: C.jade })),
                         React.createElement("span", { style: { fontWeight: 700, fontSize: 13 } }, lb)))),
                     (() => {
@@ -3172,6 +3188,280 @@ function TextReader({ b, seq }) {
                     React.createElement("button", {onClick:()=>{setCurrencyTipSeen(true);setSheet(null);},style:{width:"100%",marginTop:8,padding:"14px",borderRadius:999,background:C.jade,color:"#fff",border:"none",fontSize:15,fontWeight:700}}, "\uD83D\uDC4C \u0110\u00E3 hi\u1EC3u!"))
                 )));
     }
+    function GachaScreen({ bid, tab: initTab }) {
+        const { pop, flash, spend, setSheet, push, coin } = React.useContext(AppCtx);
+        const [pulling, setPulling] = useState(false);
+        const [cards, setCards] = useState([]);
+        const [pity, setPity] = useState(0);
+        const [poolIdx, setPoolIdx] = useState(0);
+        const [tab, setTab] = useState(initTab || "pull");
+        const [codex, setCodex] = usePersist("dverse:codex", []);
+        const [essence, setEssence] = usePersist("dverse:essence", 10);
+        const [essClaim, setEssClaim] = usePersist("dverse:essClaim", "");
+        const [tiersClaimed, setTiersClaimed] = usePersist("dverse:codexTiers", []);
+        const [charVotes, setCharVotes] = usePersist("dverse:charVotes", {});
+        const [onboard, setOnboard] = usePersist("dverse:gachaOnboard", true);
+        const today = new Date().toISOString().slice(0, 10);
+        const POOLS = [
+            { id: "pool_huyenhuyem", name: "Huyền Huyễn · Mùa 1", icon: "\u2694\uFE0F", rarity: ["SSR 2%", "SR 15%", "R 83%"], cost1: 100, cost10: 880 },
+            { id: "pool_dverse", name: "DVERSE Original", icon: "\u2728", rarity: ["SSR 3%", "SR 20%", "R 77%"], cost1: 80, cost10: 700 },
+            { id: "pool_ngontinh", name: "Ngôn Tình · Đặc Biệt", icon: "\u2764\uFE0F", rarity: ["UR 1%", "SSR 4%", "SR 18%", "R 77%"], cost1: 120, cost10: 1000 },
+        ];
+        const CHAR_NAMES = ["Kiếm Thánh Lã Bố","Ma Vương Kiều","Tiên Nữ Ngọc Long","Đại Hiệp Tôn Ngộ","Tiểu Thư Bạch Tuyết","Long Vương Trần","Hắc Phong Nguyệt","Quỷ Y Thánh Thủ"];
+        const CHAR_EMOJIS = ["\u2694\uFE0F","\uD83D\uDDE1\uFE0F","\uD83C\uDF38","\uD83D\uDCA5","\u2744\uFE0F","\uD83D\uDD25","\uD83C\uDF19","\uD83D\uDC8E"];
+        const MOCK_RANK = CHAR_NAMES.map((n,i) => ({ name:n, votes: 9800-i*800, emoji: CHAR_EMOJIS[i], rarity:i===0?"SSR":i<3?"SR":"R" }));
+        const pool = POOLS[poolIdx];
+        const rcol = r => r==="SSR"?"#F4B740":r==="SR"?"#B57BEE":r==="UR"?"#FF4444":C.sub;
+        const cardWeight = function (rar) { return rar === "UR" ? 15 : rar === "SSR" ? 8 : rar === "SR" ? 3 : 1; };
+        const codexCount = codex.filter(function (n) { return CHAR_NAMES.indexOf(n) >= 0; }).length;
+        const absorb = function (list) {
+            var added = 0, gained = 0; var fresh = [];
+            list.forEach(function (c) {
+                if (CHAR_NAMES.indexOf(c.name) < 0) { gained += cardWeight(c.rarity); return; }
+                if (codex.indexOf(c.name) >= 0 || fresh.indexOf(c.name) >= 0) { gained += cardWeight(c.rarity); }
+                else { fresh.push(c.name); added++; }
+            });
+            if (fresh.length) setCodex(codex.concat(fresh));
+            if (gained) setEssence(function (e) { return e + gained; });
+            return { added: added, gained: gained };
+        };
+        const pull = (count) => {
+            const cost = count === 10 ? pool.cost10 : pool.cost1;
+            if (!spend(cost, `Triệu hồi ${count}x · ${pool.name}`)) return setSheet({ type: "topup" });
+            setPulling(true);
+            setTimeout(() => {
+                const roll = () => { const r=Math.random(); return r<0.02?"SSR":r<0.17?"SR":"R"; };
+                const newCards = Array(count).fill(null).map((_, i) => { var idx = Math.floor(Math.random()*CHAR_NAMES.length); return {
+                    id: Date.now()+i, emoji: CHAR_EMOJIS[idx],
+                    name: CHAR_NAMES[idx],
+                    rarity: (i===count-1 && pity+count>=90)?"SSR":roll(),
+                    pool: pool.name,
+                }; });
+                setCards(c => [...newCards, ...c].slice(0,12));
+                setPity(p => (p+count)%100);
+                setPulling(false);
+                var sum = absorb(newCards);
+                flash(`Triệu hồi xong · +${sum.added} nhân vật mới · +${sum.gained} Tinh Hồn`);
+            }, 900);
+        };
+        const castVote = function (name) {
+            if (essence < 1) { flash("Hết Tinh Hồn — triệu hồi thêm hoặc nhận quà free hôm nay"); return; }
+            setEssence(function (e) { return e - 1; });
+            setCharVotes(function (m) { var o = Object.assign({}, m); o[name] = (o[name] || 0) + 1; return o; });
+            flash(`+1 vote cho ${name} \uD83C\uDFC6 (-1 Tinh Hồn)`);
+        };
+        const claimDaily = function () {
+            if (essClaim === today) { flash("Hôm nay đã nhận rồi — quay lại ngày mai nhé"); return; }
+            setEssence(function (e) { return e + 5; }); setEssClaim(today);
+            flash("\uD83C\uDF81 +5 Tinh Hồn miễn phí!");
+        };
+        const TIERS = [[3, "Khung avatar Sưu Tầm"], [5, "Huy hiệu Bạc + giảm 5% mở chương"], [8, "Huy hiệu Vàng + ngoại truyện độc quyền"]];
+        const claimTier = function (n, label) {
+            if (codexCount < n || tiersClaimed.indexOf(n) >= 0) return;
+            setTiersClaimed(tiersClaimed.concat([n]));
+            flash(`\uD83C\uDF8A Mở khoá ${n}/8: ${label}`);
+        };
+        return React.createElement("div", {style:{minHeight:"100vh",paddingBottom:88,background:C.ink}},
+            React.createElement("div", { style: { padding: "14px 16px 8px", display: "flex", alignItems: "center", gap: 10 } },
+                React.createElement("button", { onClick: pop, "aria-label": "Quay l\u1EA1i", style: { width: 34, height: 34, borderRadius: 999, background: C.surface2, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, React.createElement(ChevronLeft, { size: 18, color: C.text })),
+                React.createElement("div", { style: { fontFamily: "Noto Serif, serif", fontSize: 22, fontWeight: 800, color: C.text, flex: 1 } }, "Nh\u00E2n V\u1EADt"),
+                React.createElement("div", { className: "flex items-center", style: { gap: 6, background: C.surface2, padding: "6px 12px", borderRadius: 999, border: `1px solid ${C.line}` } },
+                    React.createElement(Coins, { size: 15, color: C.gold }),
+                    React.createElement("span", { style: { fontWeight: 700, fontSize: 13 } }, coinFmt(coin)))),
+            React.createElement("div", {style:{display:"flex",gap:0,borderBottom:`1px solid ${C.line}`,padding:"0 16px",marginBottom:12}},
+                [["pull","\u2728 Triệu Hồi"],["rank","\uD83C\uDFC6 BXH bình chọn"]].map(([id,lb])=>React.createElement("button",{key:id,onClick:()=>setTab(id),style:{padding:"10px 16px",fontWeight:700,fontSize:14,color:tab===id?C.jade:C.sub,borderBottom:tab===id?`2px solid ${C.jade}`:"",background:"transparent",border:"none",borderRadius:0,minHeight:0}},lb))),
+            tab==="pull" && React.createElement("div", {style:{padding:"0 16px"}},
+                onboard && React.createElement("div", {style:{background:`${C.jade}14`,border:`1px solid ${C.jade}55`,borderRadius:12,padding:"12px 14px",marginBottom:12}},
+                    React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},
+                        React.createElement("span", {style:{fontSize:13,fontWeight:800,color:C.jade}}, "Sưu tầm nhân vật — 3 bước"),
+                        React.createElement("button", {onClick:function(){setOnboard(false);},style:{fontSize:11,color:C.sub,background:"transparent",border:"none",minHeight:0}}, "Ẩn")),
+                    React.createElement("div", {style:{fontSize:12,color:C.text,lineHeight:1.7}}, "\u2460 Triệu hồi nhặt thẻ  \u2192  \u2461 Trùng hoá Tinh Hồn để vote  \u2192  \u2462 Đủ bộ mở ngoại truyện")),
+                React.createElement("button", {onClick:claimDaily,style:{width:"100%",textAlign:"left",display:"flex",alignItems:"center",justifyContent:"space-between",background:essClaim===today?C.surface:`${C.gold}14`,border:`1px solid ${essClaim===today?C.line:`${C.gold}55`}`,borderRadius:12,padding:"12px 14px",marginBottom:14}},
+                    React.createElement("span", {style:{fontSize:13,fontWeight:700,color:essClaim===today?C.sub:C.gold}}, essClaim===today?"\u2713 Đã nhận Tinh Hồn hôm nay":"\uD83C\uDF81 Nhận 5 Tinh Hồn miễn phí"),
+                    React.createElement("span", {style:{fontSize:12,fontWeight:800,color:C.jade}}, `\u2728 ${essence}`)),
+                React.createElement("div", {style:{marginBottom:12}},
+                    React.createElement("div", {style:{fontSize:11,fontWeight:700,color:C.sub,marginBottom:8}}, "POOL NHÂN VẬT"),
+                    React.createElement("div", {style:{display:"flex",gap:8,overflowX:"auto"}},
+                        POOLS.map((p,i) => React.createElement("button", {key:p.id,onClick:()=>setPoolIdx(i),style:{flexShrink:0,padding:"10px 14px",borderRadius:12,background:poolIdx===i?`${C.jade}22`:C.surface2,border:`1.5px solid ${poolIdx===i?C.jade:C.line}`,textAlign:"left",minWidth:140}},
+                            React.createElement("div", {style:{fontSize:18,marginBottom:4}}, p.icon),
+                            React.createElement("div", {style:{fontWeight:700,fontSize:13,color:poolIdx===i?C.jade:C.text}}, p.name),
+                            React.createElement("div", {style:{fontSize:10,color:C.sub,marginTop:2}}, p.rarity.slice(0,2).join(" · ")))))),
+                React.createElement("div", {style:{fontSize:11,color:C.sub,marginBottom:12,lineHeight:1.5}}, "\uD83D\uDC8E SSR cực hiếm · SR hiếm · R thường — càng hiếm trùng càng nhiều Tinh Hồn"),
+                React.createElement("div", {style:{background:C.surface,borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+                    React.createElement("span", {style:{fontSize:13,color:C.sub}}, "\uD83D\uDCCC Chắc chắn ra SSR sau"),
+                    React.createElement("span", {style:{fontWeight:800,color:C.gold}}, `Còn ${Math.max(0,90-pity)} lượt`)),
+                React.createElement("div", {style:{background:C.surface,borderRadius:12,padding:"12px 14px",marginBottom:12}},
+                    React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
+                        React.createElement("span", {style:{fontSize:13,fontWeight:700,color:C.text}}, `\uD83D\uDCD2 Đồ giám · ${codexCount}/8`),
+                        React.createElement("span", {style:{fontSize:12,fontWeight:700,color:C.jade}}, `\u2728 ${essence} Tinh Hồn`)),
+                    React.createElement("div", {style:{height:6,background:C.surface2,borderRadius:999,overflow:"hidden",marginBottom:10}},
+                        React.createElement("div", {style:{height:"100%",width:`${Math.min(100,Math.round(codexCount/8*100))}%`,background:`linear-gradient(90deg,${C.jade},${C.gold})`,transition:"width .3s"}})),
+                    React.createElement("div", {style:{display:"flex",gap:6}},
+                        TIERS.map(function(t){ var reached=codexCount>=t[0]; var done=tiersClaimed.indexOf(t[0])>=0; return React.createElement("button", {key:t[0],onClick:function(){claimTier(t[0],t[1]);},disabled:!reached||done,style:{flex:1,fontSize:11,fontWeight:800,padding:"7px 4px",borderRadius:8,color:done?C.sub:reached?C.ink:C.sub,background:done?C.surface2:reached?C.gold:C.surface2,border:`1px solid ${reached&&!done?C.gold:C.line}`,minHeight:0}}, done?`\u2713 ${t[0]}/8`:`Mốc ${t[0]}`); })),
+                    React.createElement("div", {style:{fontSize:10,color:C.sub,marginTop:8,lineHeight:1.4}}, "Mốc 3 → khung avatar · Mốc 5 → huy hiệu Bạc + giảm giá · Mốc 8 → huy hiệu Vàng + ngoại truyện")),
+                React.createElement("div", {style:{marginBottom:14}},
+                    React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}},
+                        CHAR_NAMES.map(function(nm,ix){ var have=codex.indexOf(nm)>=0; return React.createElement("div", {key:nm,style:{background:have?C.surface2:`${C.line}22`,borderRadius:10,padding:"9px 4px",textAlign:"center",border:`1px solid ${have?`${C.jade}55`:C.line}`,opacity:have?1:0.5}},
+                            React.createElement("div", {style:{fontSize:22,marginBottom:3}}, have?CHAR_EMOJIS[ix]:"\u2753"),
+                            React.createElement("div", {className:"clamp1",style:{fontSize:9,color:have?C.text:C.sub}}, have?nm:"Chưa có")); }))),
+                React.createElement("div", {style:{display:"flex",gap:8,marginBottom:16}},
+                    React.createElement("button", {onClick:()=>pull(1),disabled:pulling,style:{flex:1,padding:"13px",borderRadius:14,background:`linear-gradient(135deg,${C.jade},${C.jadeDeep})`,color:"#fff",fontWeight:700,fontSize:14,opacity:pulling?0.6:1}}, pulling?"\u23F3 Đang triệu...":`1x · ${pool.cost1} xu`),
+                    React.createElement("button", {onClick:()=>pull(10),disabled:pulling,style:{flex:1,padding:"13px",borderRadius:14,background:`linear-gradient(135deg,${C.gold},#B8852E)`,color:C.ink,fontWeight:700,fontSize:14,opacity:pulling?0.6:1}}, pulling?"\u23F3 Đang...":`10x · ${pool.cost10} xu (-12%)`)),
+                React.createElement("div", {style:{fontSize:11,color:C.sub,marginBottom:14,lineHeight:1.5}}, "Nhân vật mới → vào Đồ giám · Trùng → Tinh Hồn để vote BXH"),
+                pulling && React.createElement("div", {style:{textAlign:"center",padding:"24px",fontSize:32,animation:"pop 0.5s ease infinite"}}, "\u2728"),
+                cards.length > 0 && React.createElement("div", null,
+                    React.createElement("div", {style:{fontWeight:700,fontSize:14,marginBottom:10,color:C.sub}}, `\uD83D\uDCE3 Vừa triệu hồi · ${cards.length}`),
+                    React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}},
+                        cards.slice(0,24).map(card => {
+                            const col = rcol(card.rarity);
+                            return React.createElement("div", {key:card.id,style:{background:C.surface2,borderRadius:10,padding:"10px 8px",textAlign:"center",border:`1px solid ${col}44`}},
+                                React.createElement("div", {style:{fontSize:26,marginBottom:4}}, card.emoji),
+                                React.createElement("div", {style:{fontSize:9,fontWeight:800,color:col,letterSpacing:1,marginBottom:2}}, card.rarity),
+                                React.createElement("div", {className:"clamp2",style:{fontSize:11,color:C.text,lineHeight:1.3}}, card.name));
+                        })))),
+            tab==="rank" && React.createElement("div", {style:{padding:"0 16px"}},
+                React.createElement("div", {style:{background:`${C.gold}14`,border:`1px solid ${C.gold}44`,borderRadius:12,padding:"10px 14px",marginBottom:10}},
+                    React.createElement("div", {style:{fontSize:12,fontWeight:800,color:C.gold,marginBottom:2}}, "\uD83C\uDFC6 Thưởng tuần"),
+                    React.createElement("div", {style:{fontSize:11,color:C.text,lineHeight:1.5}}, "Nhân vật #1 cuối tuần → truyện được mở 1 chương ngoại truyện miễn phí; người đã vote nhận huy hiệu Người Hâm Mộ.")),
+                React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
+                    React.createElement("div", {style:{fontWeight:700,fontSize:15}}, "BXH Nhân Vật Tuần Này"),
+                    React.createElement("div", {style:{fontSize:12,fontWeight:700,color:C.jade}}, `\u2728 ${essence} Tinh Hồn`)),
+                React.createElement("div", {style:{fontSize:11,color:C.sub,marginBottom:12,lineHeight:1.5}}, "Mỗi vote tốn 1 Tinh Hồn · có thêm từ thẻ trùng & quà free mỗi ngày"),
+                (function(){var base=(MOCK_RANK);return base.map(function(c){return Object.assign({},c,{votes:(c.votes||0)+(charVotes[c.name]||0)});}).sort(function(a,z){return z.votes-a.votes;});})().map((c,i) => React.createElement("div", {key:c.name,style:{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:`1px solid ${C.line}`}},
+                    React.createElement("div", {style:{fontWeight:800,fontSize:14,color:i<3?C.gold:C.sub,minWidth:24,textAlign:"center"}}, i+1),
+                    React.createElement("div", {style:{fontSize:24}}, c.emoji),
+                    React.createElement("div", {style:{flex:1}},
+                        React.createElement("div", {style:{fontWeight:700,fontSize:14,color:C.text}}, c.name),
+                        React.createElement("div", {style:{fontSize:11,color:rcol(c.rarity),fontWeight:700}}, c.rarity)),
+                    React.createElement("div", {style:{fontWeight:700,fontSize:13,color:C.gold,minWidth:54,textAlign:"right"}}, c.votes.toLocaleString("vi-VN")),
+                    React.createElement("button", { onClick: () => castVote(c.name), style: { marginLeft: 4, fontSize: 11, fontWeight: 700, color: essence<1?C.sub:C.jade, background: essence<1?"transparent":`${C.jade}1A`, border: `1px solid ${essence<1?C.line:C.jade}`, borderRadius: 8, padding: "5px 10px", flexShrink: 0, minHeight: 0 } }, "Vote \u2728")))));
+    }
+
+    function RedPacketScreen() {
+        const { pop, flash, setCoinFree, setLedger } = React.useContext(AppCtx);
+        const [rpClaimed, setRpClaimed] = usePersist("rpClaimed", []);
+        const [opening, setOpening] = useState(null);
+        const MOCK_PACKETS = [
+            {id:"rp1",from:"DVERSE Platform",title:"\uD83C\uDF89 Lì xì Khai Trương!",amount:50,total:100,claimed:23,expires:"2026-12-31"},
+            {id:"rp2",from:"China Literature",title:"Chào mừng DVERSE \uD83C\uDF89",amount:20,total:200,claimed:67,expires:"2026-12-31"},
+        ];
+        const grantRP = (pkt, amt) => {
+            setRpClaimed((arr) => arr.includes(pkt.id) ? arr : [...arr, pkt.id]);
+            setCoinFree((x) => x + amt);
+            setLedger((l) => [{ t: "Lì xì · " + pkt.from, d: "+" + amt + " coin tặng", k: "grant" }, ...l]);
+            flash("\uD83C\uDF89 Nhận được " + amt + " xu từ lì xì!");
+        };
+        const claim = (pkt) => {
+            if (rpClaimed.includes(pkt.id)) return flash("Đã nhận rồi!");
+            setOpening(pkt.id);
+            setTimeout(() => { setOpening(null); grantRP(pkt, pkt.amount); }, 700);
+        };
+        return React.createElement("div", {className:"fade",style:{minHeight:"100vh",paddingBottom:88,background:C.ink}},
+            React.createElement("div", {style:{padding:"14px 16px 10px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid "+C.line}},
+                React.createElement("button", {onClick:pop,style:{width:34,height:34,borderRadius:999,background:C.surface2,border:"1px solid "+C.line,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}},
+                    React.createElement(ChevronLeft, { size: 18, color: C.text })),
+                React.createElement("div", {style:{fontFamily:"Noto Serif,serif",fontWeight:800,fontSize:20,color:C.text,flex:1}}, "L\u00ec X\u00ec DVERSE"),
+                React.createElement("span", {style:{fontSize:28}}, "\uD83E\uDDE7")),
+            React.createElement("div", {style:{padding:"14px 16px"}},
+                React.createElement("div", {style:{background:"linear-gradient(135deg,#8B0000,#C0392B)",borderRadius:14,padding:"18px 16px",marginBottom:14,textAlign:"center",border:"1px solid #E53935"}},
+                    React.createElement("div", {style:{fontSize:13,fontWeight:700,color:"#FFD0D0",letterSpacing:.5,marginBottom:4}}, "\uD83C\uDF89 T\u1eb7ng mi\u1ec5n ph\u00ed t\u1eeb DVERSE"),
+                    React.createElement("div", {style:{fontWeight:800,fontSize:16,color:"#FFD700"}}, "Nh\u1ea5n \"Nh\u1eadn\" \u0111\u1ec3 l\u1ea5y xu ngay")),
+                MOCK_PACKETS.map(function(pkt) {
+                    var isClaimed = rpClaimed.includes(pkt.id);
+                    var isOpening = opening === pkt.id;
+                    return React.createElement("div", {key:pkt.id,style:{background:C.surface,borderRadius:14,padding:"16px",marginBottom:12,border:"1.5px solid "+(isClaimed?C.line:C.jade)}},
+                        React.createElement("div", {style:{display:"flex",alignItems:"center",gap:12}},
+                            React.createElement("div", {style:{fontSize:38,flexShrink:0}}, isClaimed?"\u2709\uFE0F":"\uD83E\uDDE7"),
+                            React.createElement("div", {style:{flex:1,minWidth:0}},
+                                React.createElement("div", {style:{fontWeight:800,fontSize:15,color:C.text,marginBottom:3}}, pkt.title),
+                                React.createElement("div", {style:{fontSize:12,color:C.sub,marginBottom:10}}, "T\u1eeb: "+pkt.from+" \u00b7 C\u00f2n "+(pkt.total-pkt.claimed)+" phong b\u00ec"),
+                                React.createElement("button", {
+                                    onClick:function(){claim(pkt);},
+                                    disabled:isClaimed||!!opening,
+                                    style:{padding:"10px 0",borderRadius:10,background:isClaimed?C.surface2:C.jade,color:isClaimed?C.faint:"#fff",fontWeight:800,fontSize:15,border:"none",width:"100%",opacity:(!!opening&&!isOpening)?0.5:1,cursor:isClaimed?"default":"pointer"}},
+                                    isOpening?"\uD83C\uDF81 \u0110ang m\u1edf...":isClaimed?"\u2713 \u0110\u00e3 nh\u1eadn":"\uD83E\uDDE7 Nh\u1eadn +"+pkt.amount+" xu"))));
+                }),
+                React.createElement("div", {style:{padding:"12px",borderRadius:10,background:C.surface2,border:"1px solid "+C.line,fontSize:12,color:C.sub,textAlign:"center"}},
+                    "L\u00ec x\u00ec m\u1edbi \u0111\u01b0\u1ee3c th\u00eam th\u01b0\u1eddng xuy\u00ean. Quay l\u1ea1i v\u00e0o ng\u00e0y mai nh\u00e9! \uD83D\uDE0A")));
+    }
+
+    function NewbieScreen() {
+        const { pop, flash, push, setSheet, setCoinFree, setLedger, progress, lastBook, autoSub, setAutoSub, hasDeposited } = React.useContext(AppCtx);
+        const todayS = new Date().toISOString().slice(0, 10);
+        const [nb, setNb] = usePersist("newbie", { start: todayS, days: [], tasks: [] });
+        React.useEffect(() => { if (!nb.start) setNb((s) => Object.assign({}, s, { start: todayS })); }, []);
+        const DAYS = [10, 15, 20, 30, 40, 60, 100];
+        const days = nb.days || [];
+        const tasksClaimed = nb.tasks || [];
+        const claimedCount = days.length;
+        const claimedToday = days.includes(todayS);
+        const canCheckin = !claimedToday && claimedCount < 7;
+        const start = nb.start || todayS;
+        const daysLeft = Math.max(0, Math.ceil((new Date(start).getTime() + 7 * 864e5 - Date.now()) / 864e5));
+        const grant = (amt, label) => { setCoinFree((c) => c + amt); setLedger((l) => [{ t: label, d: "+" + amt + " coin tặng", k: "grant" }, ...l]); flash("+" + amt + " coin · " + label); };
+        const earned = DAYS.slice(0, claimedCount).reduce((s, v) => s + v, 0) + tasksClaimed.reduce((s, id) => s + ({ read1: 20, auto: 30, pay: 50 }[id] || 0), 0);
+        const doCheckin = () => {
+            if (!canCheckin) { flash(claimedToday ? "Hôm nay đã điểm danh rồi" : "Đã hoàn thành 7 ngày tân thủ"); return; }
+            const idx = claimedCount;
+            setNb((s) => Object.assign({}, s, { days: [...(s.days || []), todayS] }));
+            grant(DAYS[idx], "Tân thủ ngày " + (idx + 1));
+        };
+        const TASKS = [
+            { id: "read1", label: "Đọc chương đầu tiên", sub: "Bắt đầu hành trình tu tiên", rw: 20, done: Object.values(progress || {}).some((v) => v > 0), cta: "Đi đọc", act: () => { pop(); push({ type: "detail", bid: lastBook || "b1" }); } },
+            { id: "auto", label: "Bật tự động mở chương kế", sub: "Đọc liền mạch không gián đoạn", rw: 30, done: autoSub && autoSub.size > 0, cta: "Bật", act: () => { setAutoSub((s) => { const n = new Set(s); n.add(lastBook || "b1"); return n; }); flash("Đã bật tự động mở chương"); } },
+            { id: "pay", label: "Nạp lần đầu nhận thưởng +20%", sub: "Sweet-spot gói 20.000đ", rw: 50, done: hasDeposited, cta: "Nạp", act: () => setSheet({ type: "topup" }) },
+        ];
+        const claimTaskNb = (t) => {
+            if (tasksClaimed.includes(t.id)) return;
+            if (!t.done) { t.act(); return; }
+            setNb((s) => Object.assign({}, s, { tasks: [...(s.tasks || []), t.id] }));
+            grant(t.rw, "Nhiệm vụ tân thủ");
+        };
+        return React.createElement("div", { className: "fade", style: { minHeight: "100vh", paddingBottom: 88, background: C.ink } },
+            React.createElement("div", { style: { padding: "14px 16px 10px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid " + C.line } },
+                React.createElement("button", { onClick: pop, style: { width: 34, height: 34, borderRadius: 999, background: C.surface2, border: "1px solid " + C.line, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, React.createElement(ChevronLeft, { size: 18, color: C.text })),
+                React.createElement("div", { style: { fontFamily: "Noto Serif, serif", fontWeight: 800, fontSize: 20, color: C.text, flex: 1 } }, "Hành trình tân thủ"),
+                React.createElement("span", { style: { fontSize: 26 } }, "\uD83C\uDF81")),
+            React.createElement("div", { style: { padding: "14px 16px" } },
+                React.createElement("div", { style: { borderRadius: 16, padding: "16px", marginBottom: 16, background: "linear-gradient(135deg," + C.gold + "26," + C.surface + ")", border: "1px solid " + C.gold + "55" } },
+                    React.createElement("div", { className: "flex items-center", style: { justifyContent: "space-between" } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 12, color: C.sub } }, "Đã nhận"),
+                            React.createElement("div", { className: "flex items-center", style: { gap: 6, marginTop: 2 } },
+                                React.createElement(Coins, { size: 20, color: C.gold }),
+                                React.createElement("span", { style: { fontWeight: 800, fontSize: 26, color: C.text } }, earned),
+                                React.createElement("span", { style: { fontSize: 13, color: C.sub, marginLeft: 2 } }, "coin tặng"))),
+                        React.createElement("div", { style: { textAlign: "right" } },
+                            React.createElement("div", { className: "flex items-center", style: { gap: 5, justifyContent: "flex-end", color: C.coral } },
+                                React.createElement(Clock, { size: 15 }),
+                                React.createElement("span", { style: { fontWeight: 800, fontSize: 19 } }, daysLeft)),
+                            React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 1 } }, "ngày còn lại"))),
+                    React.createElement("div", { style: { fontSize: 11.5, color: C.sub, marginTop: 10, lineHeight: 1.5 } }, "Nhận tới 275 coin trong 7 ngày đầu: điểm danh mỗi ngày + làm xong 3 việc dưới đây.")),
+                React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 10 } }, "Điểm danh 7 ngày"),
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 12 } },
+                    DAYS.map((amt, i) => {
+                        const claimed = i < claimedCount;
+                        const isToday = i === claimedCount && canCheckin;
+                        return React.createElement("div", { key: i, style: { textAlign: "center", borderRadius: 10, padding: "8px 2px", background: claimed ? C.jade + "22" : isToday ? C.gold + "1A" : C.surface2, border: "1px solid " + (claimed ? C.jade : isToday ? C.gold : C.line) } },
+                            React.createElement("div", { style: { width: 26, height: 26, margin: "0 auto", borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: claimed ? C.jade : "transparent" } }, claimed ? React.createElement(Check, { size: 14, color: C.ink }) : React.createElement(Coins, { size: 13, color: isToday ? C.gold : C.faint })),
+                            React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: claimed ? C.jade : isToday ? C.gold : C.sub, marginTop: 3 } }, "+" + amt),
+                            React.createElement("div", { style: { fontSize: 8.5, color: C.faint, marginTop: 1 } }, "N" + (i + 1)));
+                    })),
+                React.createElement("button", { onClick: doCheckin, disabled: !canCheckin, style: { width: "100%", padding: 13, borderRadius: 12, fontWeight: 700, fontSize: 15, marginBottom: 18, background: canCheckin ? C.gold : C.surface2, color: canCheckin ? C.ink : C.sub, border: canCheckin ? "none" : "1px solid " + C.line } }, claimedToday ? "Đã điểm danh hôm nay" : claimedCount >= 7 ? "Hoàn thành 7 ngày \uD83C\uDF89" : "Điểm danh nhận +" + DAYS[claimedCount] + " coin"),
+                React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 10 } }, "Việc cần làm"),
+                TASKS.map((t) => {
+                    const claimed = tasksClaimed.includes(t.id);
+                    return React.createElement("div", { key: t.id, className: "flex items-center", style: { justifyContent: "space-between", gap: 10, padding: "12px 14px", borderRadius: 12, background: C.surface, border: "1px solid " + C.line, marginBottom: 8 } },
+                        React.createElement("div", { className: "flex items-center", style: { gap: 10, minWidth: 0 } },
+                            React.createElement("div", { style: { width: 30, height: 30, borderRadius: 999, flexShrink: 0, background: claimed ? C.jade : C.surface2, display: "flex", alignItems: "center", justifyContent: "center" } }, claimed ? React.createElement(Check, { size: 15, color: C.ink }) : React.createElement(Coins, { size: 14, color: C.gold })),
+                            React.createElement("div", { style: { minWidth: 0 } },
+                                React.createElement("div", { style: { fontSize: 13.5, fontWeight: 600, color: C.text } }, t.label),
+                                React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 1 } }, "+" + t.rw + " coin" + (t.sub ? " · " + t.sub : "")))),
+                        React.createElement("button", { onClick: () => claimTaskNb(t), disabled: claimed, style: { flexShrink: 0, padding: "7px 14px", borderRadius: 999, fontWeight: 700, fontSize: 12.5, background: claimed ? C.surface2 : t.done ? C.jade : C.surface2, color: claimed ? C.faint : t.done ? C.ink : C.jade, border: claimed ? "1px solid " + C.line : t.done ? "none" : "1px solid " + C.jade } }, claimed ? "Đã nhận" : t.done ? "Nhận" : t.cta));
+                }),
+                React.createElement("div", { style: { fontSize: 11, color: C.faint, marginTop: 8, lineHeight: 1.5 } }, "Coin tặng dùng mở chương, triệu hồi, ủng hộ tác giả. Hết hạn sau 7 ngày kể từ ngày tham gia.")));
+    }
+
     function TopupSheet() {
         const { coin, coinFree, topup, setSheet, hasDeposited } = React.useContext(AppCtx);
         const channels = [["VNPay", "Ví / thẻ · khuyên dùng"], ["MoMo", "Ví MoMo"], ["ZaloPay", "Ví ZaloPay"]];
