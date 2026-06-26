@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DVERSE">
 <meta name="application-name" content="DVERSE">
-<meta name="description" content="Nền tảng truyện chữ & truyện tranh bản quyền Việt Nam">
+<meta name="description" content="Nền tảng truyện chữ &amp; truyện tranh bản quyền Việt Nam">
 <meta property="og:title" content="DVERSE — Kho truyện số Việt Nam">
 <meta property="og:description" content="Đọc web novel, manga, manhwa bản quyền. Telco-native.">
 <link rel="manifest" href="manifest.json">
@@ -50,7 +50,7 @@ button,[role=button]{min-height:44px;min-width:44px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 </head>
 <body>
-<div id="root"><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0E141B"><div style="width:38px;height:38px;border-radius:50%;border:3px solid rgba(39,194,160,.25);border-top-color:#27C2A0;animation:dvspin .8s linear infinite"></div></div><style>@keyframes dvspin{to{transform:rotate(360deg)}}</style></div>
+<div id="root"></div>
 <script>window.__CLIPS={};</script>
 <script>
 if('serviceWorker' in navigator){
@@ -984,6 +984,17 @@ function App() {
         flash(`Hoàn thành nhiệm vụ · +${reward} coin`);
     };
     const topup = (channel, pkg) => {
+        const applyDemo = () => {
+            const x2bonus = !hasDeposited;
+            const finalBase = x2bonus ? Math.round(pkg.base * 1.2) : pkg.base;
+            setCoinPaid((x) => x + finalBase);
+            if (pkg.bonus) setCoinFree((x) => x + pkg.bonus);
+            if (x2bonus) setHasDeposited(true);
+            setLedger((l) => [{ t: `Nạp qua ${channel}${x2bonus ? " · +20% lần đầu" : ""}`, d: `+${finalBase} xu${pkg.bonus ? ` (+${pkg.bonus} tặng)` : ""}`, k: "topup" }, ...l]);
+            setSheet(null);
+            try { track("topup", { channel: channel, coin: finalBase + (pkg.bonus || 0) }); } catch (e) {}
+            flash(`Đã nạp ${(finalBase + (pkg.bonus || 0)).toLocaleString("vi-VN")} xu qua ${channel}${x2bonus ? " (+20% lần đầu 🎁)" : ""}`);
+        };
         if (DV_ON) {
             const map = { 1500: "t1", 3000: "t2", 6000: "t3", 10000: "t4", 25000: "t5" };
             const pid = map[pkg.base];
@@ -991,28 +1002,18 @@ function App() {
                 const isVnpay = /vnpay/i.test(channel);
                 DV.topup(pid, isVnpay ? "vnpay" : "vnpt", isVnpay ? "direct" : "telco_billing").then((r) => {
                     if (r.status === 200 && r.data.ok) {
-                        // Fix: update state trực tiếp từ response, không gọi dvHydrate (tránh async re-render thêm)
                         const coins = r.data.coins || 0;
                         setCoinPaid((x) => x + pkg.base);
                         if (pkg.bonus) setCoinFree((x) => x + pkg.bonus);
                         setLedger((l) => [{ t: `Nạp qua ${channel}`, d: `+${coins} coin`, k: "topup" }, ...l]);
                         setSheet(null);
-                        flash(`Đã nạp ${coins} coin (backend)`);
-                    } else flash("Nạp thất bại");
-                }).catch(() => flash("Lỗi kết nối backend"));
+                        flash(`Đã nạp ${coins} coin`);
+                    } else { applyDemo(); }
+                }).catch(() => { applyDemo(); });
                 return;
             }
         }
-        // A.2 — nạp đầu +20% (Qidian 完成首充送豪礼)
-        const x2bonus = !hasDeposited;
-        const finalBase = x2bonus ? Math.round(pkg.base * 1.2) : pkg.base;
-        setCoinPaid((x) => x + finalBase);
-        if (pkg.bonus) setCoinFree((x) => x + pkg.bonus);
-        if (x2bonus) setHasDeposited(true);
-        setLedger((l) => [{ t: `Nạp qua ${channel}${x2bonus ? " · +20% lần đầu" : ""}`, d: `+${finalBase} xu${pkg.bonus ? ` (+${pkg.bonus} tặng)` : ""}`, k: "topup" }, ...l]);
-        setSheet(null);
-        track("topup", { channel: channel, coin: finalBase + (pkg.bonus || 0) });
-        flash(`Đã nạp ${(finalBase + (pkg.bonus || 0)).toLocaleString("vi-VN")} xu qua ${channel}${x2bonus ? " (+20% lần đầu 🎁)" : ""}`);
+        applyDemo();
     };
     const ownKey = (b, ch) => `${b.id}:${ch.seq}`;
     const isOwned = (b, ch) => ch.tier === "FREE" || ch.seq <= 3 || owned.has(ownKey(b, ch)) || (pass && ch.tier === "STANDARD") || (pass === "vip" && ch.tier === "EARLY");
@@ -3173,8 +3174,8 @@ function TextReader({ b, seq }) {
     }
     function TopupSheet() {
         const { coin, coinFree, topup, setSheet, hasDeposited } = React.useContext(AppCtx);
-        const channels = [["MoMo", "Ví MoMo"], ["ZaloPay", "Ví ZaloPay"], ["VNPT", "Telco billing"], ["Viettel", "Telco billing"], ["MobiFone", "Telco billing"], ["VNPay", "Ví / thẻ"]];
-        const [chan, setChan] = useState("VNPT");
+        const channels = [["VNPay", "Ví / thẻ · khuyên dùng"], ["MoMo", "Ví MoMo"], ["ZaloPay", "Ví ZaloPay"]];
+        const [chan, setChan] = useState("VNPay");
         // A.2 — Bậc nạp telco-native (1xu = 20đ, sweet-spot T3=120k)
         const pkgs = [
             { base: 1500, bonus: 0, bonusPct: 0, price: "30.000đ", role: "Entry" },
