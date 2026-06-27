@@ -1378,7 +1378,7 @@ function App() {
                 React.createElement("button", {onClick:()=>{setSpinCtaBook(null);push({type:"detail",bid:spinCtaBook});},style:{padding:"8px 14px",borderRadius:999,background:C.jade,color:"#fff",border:"none",fontSize:12,fontWeight:700,whiteSpace:"nowrap",minHeight:0,minWidth:0}}, "\u0110\u1ECDc ti\u1EBFp \u2192")),
             tab==="me" && !top && !currencyTipSeen && React.createElement("div", {className:"fade",style:{position:"fixed",bottom:96,right:16,zIndex:80,display:"flex",alignItems:"center",gap:4,background:C.jade,borderRadius:999,padding:"2px 2px 2px 6px",boxShadow:"0 4px 16px rgba(22,185,198,.4)"}},
                 React.createElement("button", {onClick:()=>setSheet({type:"currencyGuide"}),style:{background:"transparent",color:"#fff",border:"none",padding:"7px 6px",fontSize:13,fontWeight:700,minHeight:0,minWidth:0}}, "\uD83D\uDCA1 Hi\u1EC3u v\u1EC1 coin & v\u00E9"),
-                React.createElement("button", {onClick:()=>setCurrencyTipSeen(true),"aria-label":"\u0110\u00F3ng",style:{width:30,height:30,borderRadius:999,background:"rgba(255,255,255,.22)",color:"#fff",border:"none",fontSize:17,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}, "\u00D7"))
+                React.createElement("button", {onClick:()=>setCurrencyTipSeen(true),"aria-label":"\u0110\u00F3ng",style:{width:30,height:30,borderRadius:999,background:C.surface2,color:C.text,border:`1px solid ${C.line}`,fontSize:17,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}, "\u00D7"))
             )));
     /* ============================ SCREENS ============================ */
     function Header({ title }) {
@@ -1443,6 +1443,7 @@ function App() {
                     React.createElement("span", { style: { color: C.jade } }, "D"),
                     "verse"),
                 React.createElement("div", { className: "flex items-center", style: { gap: 8 } },
+                    React.createElement("button", { onClick: () => setAppTheme((m) => m === "dark" ? "light" : "dark"), "aria-label": "Sáng/Tối", style: { width: 36, height: 36, borderRadius: 999, background: C.surface2, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center" } }, appTheme === "dark" ? React.createElement(Sun, { size: 16, color: C.gold }) : React.createElement(Moon, { size: 16, color: C.text })),
                     React.createElement("button", { onClick: () => push({ type: "notifications" }), style: { position: "relative", width: 36, height: 36, borderRadius: 999, background: C.surface2, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center" } },
                         React.createElement(Bell, { size: 16, color: C.text }),
                         unreadCount > 0 && React.createElement("span", { style: { position: "absolute", top: -3, right: -3, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: C.coral, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" } }, unreadCount)),
@@ -3621,6 +3622,7 @@ function TextReader({ b, seq }) {
                 React.createElement("span", { style: { fontSize: 12, color: C.sub } },
                     ch.words.toLocaleString("vi-VN"),
                     " ch\u1EEF")),
+            ch.tier === "STANDARD" && !pass && (canWff ? (React.createElement("button", { onClick: () => claimWff(b, ch), className: "flex items-center", style: { width: "100%", justifyContent: "center", gap: 8, marginBottom: 12, padding: 15, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 15 } }, React.createElement(Clock, { size: 17 }), "Chờ là đọc free · nhận chương hôm nay")) : (React.createElement("div", { style: { marginBottom: 12, padding: "12px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.line}` } }, React.createElement("div", { className: "flex items-center", style: { justifyContent: "center", gap: 6, fontSize: 13, color: C.gold } }, React.createElement(Clock, { size: 14 }), "Chương miễn phí kế tiếp sau ", React.createElement(Countdown, null)), React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 4, textAlign: "center" } }, "Mỗi truyện mở 1 chương miễn phí mỗi ngày · chờ là đọc")))),
             React.createElement("div", { style: { fontSize: 13, color: C.sub, marginBottom: 18 } },
                 "S\u1ED1 d\u01B0: ",
                 coinFmt(coin),
@@ -3628,8 +3630,7 @@ function TextReader({ b, seq }) {
                 React.createElement("b", { style: { color: C.gold } },
                     ch.priceCoin,
                     " coin")),
-            React.createElement("div", { style: { fontSize: 11, color: C.faint, textAlign: "center", marginBottom: 10 } }, "Chờ là đọc free · DVERSE+ đọc liền · VIP đọc sớm"),
-            ch.tier === "STANDARD" && !pass && (canWff ? (React.createElement("button", { onClick: () => claimWff(b, ch), className: "flex items-center", style: { width: "100%", justifyContent: "center", gap: 8, marginBottom: 12, padding: 15, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 15 } }, React.createElement(Clock, { size: 17 }), "Chờ là đọc free · nhận chương hôm nay")) : (React.createElement("div", { style: { marginBottom: 12, padding: "12px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.line}` } }, React.createElement("div", { className: "flex items-center", style: { justifyContent: "center", gap: 6, fontSize: 13, color: C.gold } }, React.createElement(Clock, { size: 14 }), "Chương miễn phí kế tiếp sau ", React.createElement(Countdown, null)), React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 4, textAlign: "center" } }, "Mỗi truyện mở 1 chương miễn phí mỗi ngày · chờ là đọc")))),
+            React.createElement("div", { style: { fontSize: 11, color: C.faint, textAlign: "center", marginBottom: 10 } }, "DVERSE+ đọc liền mọi chương · VIP đọc sớm"),
             covered ? (React.createElement("button", { onClick: () => unlock(b, ch), style: { width: "100%", padding: 14, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800 } },
                 "\u0110\u1ECDc b\u1EB1ng g\u00F3i ",
                 pass === "vip" ? "VIP" : "DVERSE+")) : coin >= _eff ? (React.createElement("button", { onClick: () => unlock(b, ch), style: { width: "100%", padding: 14, borderRadius: 12, background: C.gold, color: C.onDark, fontWeight: 800 } },
