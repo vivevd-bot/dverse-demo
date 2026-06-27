@@ -604,6 +604,7 @@ const Skeleton = function(p) {
   var w=p.w||'100%', h=p.h||16, r=p.r||8, mb=p.mb||8;
   return React.createElement('div',{className:'skeleton',style:{width:w,height:h,borderRadius:r,marginBottom:mb}});
 };
+function track(ev, props) { try { (window.__dv = window.__dv || []).push(Object.assign({ ev: ev, t: Date.now() }, props || {})); } catch (e) {} }
 let __toastFn = null;
 function Toast() {
     const [m, setM] = React.useState(null);
@@ -934,6 +935,7 @@ function App() {
     }, []);
     const flash = (m) => { if (typeof __toastFn === "function") __toastFn(m); };
     const track = (ev, props) => { try { (window.__dv = window.__dv || []).push(Object.assign({ ev: ev, t: Date.now() }, props || {})); } catch (e) { } };
+    React.useEffect(() => { track("session_start", { dvOn: !!DV_ON }); }, []);
     useEffect(() => {
         if (exp >= 500) {
             const up = Math.floor(exp / 500);
@@ -1116,6 +1118,7 @@ function App() {
     };
     const claimWff = (b, ch) => {
         const applyGrant = () => {
+            track("wff_claim", { bid: b.id, seq: ch.seq });
             setOwned((s) => new Set(s).add(ownKey(b, ch)));
             setWffClaimed((s) => new Set(s).add(b.id + ":" + todayStr));
             setLedger((l) => [{ t: `Wait-for-free · ${b.title} Ch.${ch.seq}`, d: "Miễn phí hôm nay", k: "grant" }, ...l]);
@@ -1314,7 +1317,7 @@ function App() {
         railBtn, addComment, cdataFor, SPIN_PRIZES, buildNotifs,
         unreadCount, markNotifsRead,
     };
-    if (DV_ON && !dvAuthed) return React.createElement(DVLogin, { onAuthed: (telcoActivated) => { setDvAuthed(true); if (telcoActivated) { setPass('plus'); setTimeout(() => flash('\uD83C\uDF89 DVERSE Pass \u0111\u00E3 k\u00EDch ho\u1EA1t! \u0110\u1ECDc kh\u00F4ng gi\u1EDBi h\u1EA1n 30 ng\u00E0y'), 400); } } });
+    if (DV_ON && !dvAuthed) return React.createElement(DVLogin, { onAuthed: (telcoActivated) => { track("login", { telcoActivated: !!telcoActivated }); setDvAuthed(true); if (telcoActivated) { setPass('plus'); setTimeout(() => flash('\uD83C\uDF89 DVERSE Pass \u0111\u00E3 k\u00EDch ho\u1EA1t! \u0110\u1ECDc kh\u00F4ng gi\u1EDBi h\u1EA1n 30 ng\u00E0y'), 400); } } });
     return React.createElement(AppCtx.Provider, { value: _appCtx },
     React.createElement("div", { style: { fontFamily: "'Be Vietnam Pro', system-ui, sans-serif", background: C.ink, color: C.text, minHeight: "100vh", width: "100%" } },
         React.createElement("style", null, `
@@ -1778,7 +1781,7 @@ function App() {
         const [gs, setGs] = useState([]);
         const genres = ["Huyền huyễn", "Ngôn tình", "Đô thị", "Hành động", "Phiêu lưu", "Trinh thám"];
         const toggleG = (g) => setGs((x) => x.includes(g) ? x.filter((y) => y !== g) : x.concat(g));
-        const finish = () => { setReadPref(mode); setHomeAud(aud); setPrefGenres(gs); setOnboarded(true); flash("Đã cá nhân hóa trang Khám phá cho bạn"); };
+        const finish = () => { setReadPref(mode); setHomeAud(aud); setPrefGenres(gs); track("onboarding_complete", { mode: mode, aud: aud, genres: gs.length }); setOnboarded(true); flash("Đã cá nhân hóa trang Khám phá cho bạn"); };
         const pill = (active) => ({ flex: 1, padding: "16px 0", borderRadius: 14, fontWeight: 700, fontSize: 15, background: active ? C.jade : C.surface, color: active ? C.ink : C.text, border: "1.5px solid " + (active ? C.jade : C.line) });
         const cont = (onClick, label) => React.createElement("button", { onClick: onClick, style: { width: "100%", padding: 15, borderRadius: 14, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 16 } }, label);
         return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 90, background: "linear-gradient(160deg, " + C.jadeDeep + ", " + C.ink + " 60%)", maxWidth: 460, margin: "0 auto", display: "flex", flexDirection: "column", justifyContent: "center", padding: 24 } },
@@ -2502,6 +2505,7 @@ function App() {
     /* ============================ DETAIL ============================ */
     function Detail({ b }) {
         const [detailTab, setDetailTab] = useState("chapters");
+        React.useEffect(() => { if (b) track("book_view", { bid: b.id }); }, [b && b.id]);
         const [a, bg] = b.g;
         const unit = b.type === "text" ? "Ch." : "Tập ";
         const fans = [...b.fans];
@@ -2748,6 +2752,7 @@ function App() {
 }
 /* ============================ TEXT READER (outside App) ============================ */
 function TextReader({ b, seq }) {
+    React.useEffect(() => { if (b) track("reader_open", { bid: b.id, seq: seq, type: "text" }); }, [b && b.id, seq]);
     const { cdataFor, comments, rTheme, setRTheme, fontSize, setFontSize, lineH, setLineH,
         serif, setSerif, bright, setBright, eyeCare, setEyeCare,
         autoRead, setAutoRead, autoSpeed, setAutoSpeed,
@@ -3130,6 +3135,7 @@ function TextReader({ b, seq }) {
                     cs.length || ""))));
     }
     function WebtoonReader({ b, seq }) {
+        React.useEffect(() => { if (b) track("reader_open", { bid: b.id, seq: seq, type: "webtoon" }); }, [b && b.id, seq]);
         const { cdataFor, comments, likedCh, likeChapter, rated, rate, setSheet, setProgress,
             setLastBook, markRead, toggleOffline, offline, goPrevChapter, goNextChapter,
             isOwned, pop, subscribed, toggleSub
@@ -3275,6 +3281,7 @@ function TextReader({ b, seq }) {
         };
         const pull = (count) => {
             if (pool.licensed) { flash("Pool bản quyền — sắp ra mắt sau thoả thuận phái sinh"); return; }
+            track("gacha_pull", { pool: pool.id, count: count });
             if (DV_ON && DV.isAuthed()) {
                 setPulling(true);
                 DV.gachaPull(pool.id, count).then((r) => {
@@ -3601,6 +3608,7 @@ function TextReader({ b, seq }) {
         const covered = (pass && ch.tier === "STANDARD") || (pass === "vip" && ch.tier === "EARLY");
         const canWff = ch.tier === "STANDARD" && !pass && !isOwned(b, ch) && !wffClaimed.has(b.id + ":" + todayStr);
         const _cdx = LS.get("dverse:codex", []); const _disc = _cdx.length >= 8 ? 0.10 : _cdx.length >= 5 ? 0.05 : 0; const _eff = Math.round(ch.priceCoin * (1 - _disc));
+        React.useEffect(() => { track("paywall_view", { bid: b.id, seq: ch.seq, tier: ch.tier }); }, [b.id, ch.seq]);
         return (React.createElement("div", { style: { padding: "0 18px", textAlign: "center" } },
             React.createElement("div", { style: { width: 56, height: 56, borderRadius: 16, background: `${C.gold}1A`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } },
                 React.createElement(Lock, { size: 26, color: C.gold })),
