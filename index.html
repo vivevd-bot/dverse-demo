@@ -660,6 +660,7 @@ var DV = (function () {
     donationLeaderboard: function (bookId) { return api("/books/" + bookId + "/donors"); },
     rankings: function (type) { return api("/rankings?type=" + (type || "hot")); },
     wffClaim: function (bid, seq) { return api("/wff/claim", { method: "POST", body: { bid: bid, seq: seq } }); },
+    gachaPull: function (poolId, count) { return api("/gacha/pull", { method: "POST", body: { poolId: poolId, count: count } }); },
     socialLogin: function (provider, payload) {
       return api("/auth/social/" + provider, { method: "POST", body: payload }).then(function (r) {
         if (r.status === 200 && r.data.token) { token = r.data.token; try { localStorage.setItem("dverse:token", token); } catch (e) {} }
@@ -3222,9 +3223,9 @@ function TextReader({ b, seq }) {
         const [onboard, setOnboard] = usePersist("dverse:gachaOnboard", true);
         const today = new Date().toISOString().slice(0, 10);
         const POOLS = [
-            { id: "pool_huyenhuyem", name: "Huyền Huyễn · Mùa 1", icon: "\u2694\uFE0F", rarity: ["SSR 2%", "SR 15%", "R 83%"], cost1: 100, cost10: 880 },
-            { id: "pool_dverse", name: "DVERSE Original", icon: "\u2728", rarity: ["SSR 3%", "SR 20%", "R 77%"], cost1: 80, cost10: 700 },
-            { id: "pool_ngontinh", name: "Ngôn Tình · Đặc Biệt", icon: "\u2764\uFE0F", rarity: ["UR 1%", "SSR 4%", "SR 18%", "R 77%"], cost1: 120, cost10: 1000 },
+            { id: "pool_dverse", name: "DVERSE Original", icon: "\u2728", licensed: false, rarity: ["SSR 3%", "SR 20%", "R 77%"], odds: [["SSR",0.03],["SR",0.20],["R",0.77]], cost1: 80, cost10: 700 },
+            { id: "pool_huyenhuyem", name: "Huyền Huyễn · Mùa 1", icon: "\u2694\uFE0F", licensed: true, rarity: ["SSR 2%", "SR 15%", "R 83%"], odds: [["SSR",0.02],["SR",0.15],["R",0.83]], cost1: 100, cost10: 880 },
+            { id: "pool_ngontinh", name: "Ngôn Tình · Đặc Biệt", icon: "\u2764\uFE0F", licensed: true, rarity: ["UR 1%", "SSR 4%", "SR 18%", "R 77%"], odds: [["UR",0.01],["SSR",0.04],["SR",0.18],["R",0.77]], cost1: 120, cost10: 1000 },
         ];
         const CHAR_NAMES = ["Kiếm Thánh Lã Bố","Ma Vương Kiều","Tiên Nữ Ngọc Long","Đại Hiệp Tôn Ngộ","Tiểu Thư Bạch Tuyết","Long Vương Trần","Hắc Phong Nguyệt","Quỷ Y Thánh Thủ"];
         const CHAR_EMOJIS = ["\u2694\uFE0F","\uD83D\uDDE1\uFE0F","\uD83C\uDF38","\uD83D\uDCA5","\u2744\uFE0F","\uD83D\uDD25","\uD83C\uDF19","\uD83D\uDC8E"];
@@ -3245,15 +3246,33 @@ function TextReader({ b, seq }) {
             return { added: added, gained: gained };
         };
         const pull = (count) => {
+            if (pool.licensed) { flash("Pool bản quyền — sắp ra mắt sau thoả thuận phái sinh"); return; }
+            if (DV_ON && DV.isAuthed()) {
+                setPulling(true);
+                DV.gachaPull(pool.id, count).then((r) => {
+                    setPulling(false);
+                    if (r && r.status === 200 && r.data && r.data.granted) {
+                        const sv = (r.data.cards || []).map((c, i) => ({ id: Date.now()+i, emoji: c.emoji, name: c.name, rarity: c.rarity, pool: pool.name }));
+                        setCards(c => [...sv, ...c].slice(0,12));
+                        if (typeof r.data.pity === "number") setPity(r.data.pity);
+                        if (r.data.essenceGained) setEssence(e => e + r.data.essenceGained);
+                        const nw = r.data.newChars || [];
+                        if (nw.length) setCodex(x => x.concat(nw.filter(n => x.indexOf(n) < 0)));
+                        flash(`Triệu hồi xong · +${nw.length} nhân vật mới · +${r.data.essenceGained || 0} Tinh Hồn`);
+                    } else if (r && r.data && r.data.code === "INSUFFICIENT") { setSheet({ type: "topup" }); }
+                    else { flash((r && r.data && r.data.message) || "Triệu hồi thất bại, thử lại"); }
+                }).catch(() => { setPulling(false); flash("Lỗi kết nối, thử lại sau"); });
+                return;
+            }
             const cost = count === 10 ? pool.cost10 : pool.cost1;
             if (!spend(cost, `Triệu hồi ${count}x · ${pool.name}`)) return setSheet({ type: "topup" });
             setPulling(true);
             setTimeout(() => {
-                const roll = () => { const r=Math.random(); return r<0.02?"SSR":r<0.17?"SR":"R"; };
+                const roll = () => { let r = Math.random(); for (var k = 0; k < pool.odds.length; k++) { if (r < pool.odds[k][1]) return pool.odds[k][0]; r -= pool.odds[k][1]; } return "R"; };
                 const newCards = Array(count).fill(null).map((_, i) => { var idx = Math.floor(Math.random()*CHAR_NAMES.length); return {
                     id: Date.now()+i, emoji: CHAR_EMOJIS[idx],
                     name: CHAR_NAMES[idx],
-                    rarity: (i===count-1 && pity+count>=90)?"SSR":roll(),
+                    rarity: (i===count-1 && pity+count>=90)?pool.odds[0][0]:roll(),
                     pool: pool.name,
                 }; });
                 setCards(c => [...newCards, ...c].slice(0,12));
@@ -3301,10 +3320,10 @@ function TextReader({ b, seq }) {
                 React.createElement("div", {style:{marginBottom:12}},
                     React.createElement("div", {style:{fontSize:11,fontWeight:700,color:C.sub,marginBottom:8}}, "POOL NHÂN VẬT"),
                     React.createElement("div", {style:{display:"flex",gap:8,overflowX:"auto"}},
-                        POOLS.map((p,i) => React.createElement("button", {key:p.id,onClick:()=>setPoolIdx(i),style:{flexShrink:0,padding:"10px 14px",borderRadius:12,background:poolIdx===i?`${C.jade}22`:C.surface2,border:`1.5px solid ${poolIdx===i?C.jade:C.line}`,textAlign:"left",minWidth:140}},
-                            React.createElement("div", {style:{fontSize:18,marginBottom:4}}, p.icon),
-                            React.createElement("div", {style:{fontWeight:700,fontSize:13,color:poolIdx===i?C.jade:C.text}}, p.name),
-                            React.createElement("div", {style:{fontSize:10,color:C.sub,marginTop:2}}, p.rarity.slice(0,2).join(" · ")))))),
+                        POOLS.map((p,i) => React.createElement("button", {key:p.id,onClick:()=> p.licensed ? flash("Pool bản quyền — sắp ra mắt sau thoả thuận phái sinh") : setPoolIdx(i),style:{flexShrink:0,padding:"10px 14px",borderRadius:12,background:poolIdx===i&&!p.licensed?`${C.jade}22`:C.surface2,border:`1.5px solid ${poolIdx===i&&!p.licensed?C.jade:C.line}`,textAlign:"left",minWidth:140,opacity:p.licensed?0.55:1}},
+                            React.createElement("div", {style:{fontSize:18,marginBottom:4}}, p.licensed?"\uD83D\uDD12":p.icon),
+                            React.createElement("div", {style:{fontWeight:700,fontSize:13,color:poolIdx===i&&!p.licensed?C.jade:C.text}}, p.name),
+                            React.createElement("div", {style:{fontSize:10,color:C.sub,marginTop:2}}, p.licensed?"Sắp ra mắt · chờ thoả thuận phái sinh":p.rarity.slice(0,2).join(" · ")))))),
                 React.createElement("div", {style:{fontSize:11,color:C.sub,marginBottom:12,lineHeight:1.5}}, "\uD83D\uDC8E SSR cực hiếm · SR hiếm · R thường — càng hiếm trùng càng nhiều Tinh Hồn"),
                 React.createElement("div", {style:{background:C.surface,borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}},
                     React.createElement("span", {style:{fontSize:13,color:C.sub}}, "\uD83D\uDCCC Chắc chắn ra SSR sau"),
