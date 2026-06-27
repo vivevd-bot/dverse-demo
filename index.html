@@ -128,11 +128,18 @@ const List = _ic('<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="1
 const Bell = _ic('<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>');
 const Film = _ic('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>');
 /* ============================ THEME ============================ */
-const C = {
+const C_DARK = {
     ink: "#0E141B", surface: "#161F2A", surface2: "#1E2A38", surface3: "#26354620",
     line: "#2A3744", jade: "#16B9C6", jadeDeep: "#15806B", gold: "#E6B450",
-    goldDeep: "#B8852E", coral: "#F0654E", coralLight: "#F5826B", text: "#EAF0F4", sub: "#94A3B0", faint: "#8B99A7",
+    goldDeep: "#B8852E", coral: "#F0654E", coralLight: "#F5826B", text: "#EAF0F4", sub: "#94A3B0", faint: "#8B99A7", onDark: "#0E141B",
 };
+const C_LIGHT = {
+    ink: "#F4F6F9", surface: "#FFFFFF", surface2: "#EDF1F5", surface3: "#E3E9EF",
+    line: "#E1E7ED", jade: "#16B9C6", jadeDeep: "#15806B", gold: "#E6B450",
+    goldDeep: "#B8852E", coral: "#F0654E", coralLight: "#F5826B", text: "#16181D", sub: "#5B6470", faint: "#8A93A0", onDark: "#0E141B",
+};
+const C = Object.assign({}, C_DARK);
+function applyTheme(mode) { Object.assign(C, mode === "light" ? C_LIGHT : C_DARK); try { var _m = document.querySelector('meta[name="theme-color"]'); if (_m) _m.setAttribute("content", mode === "light" ? "#F4F6F9" : "#0E141B"); } catch (e) {} }
 const READER_THEMES = {
     "Tối": { bg: "#14181E", text: "#C8CDD4", soft: "#1E2630", sub: "#7E8A96" },
     "Sáng": { bg: "#FFFFFF", text: "#1A1A1A", soft: "#F2F2F0", sub: "#6B6B6B" },
@@ -607,6 +614,14 @@ function Toast() {
     if (!m) return null;
     return React.createElement("div", { style: { position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: "#000000e8", color: "#fff", padding: "10px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, zIndex: 80, maxWidth: 380, textAlign: "center", boxShadow: "0 8px 24px rgba(0,0,0,.5)" } }, m);
 }
+let __coinFn = null;
+function CoinFlash() {
+    const [v, setV] = React.useState(null);
+    React.useEffect(() => { __coinFn = (amt) => { setV({ amt: amt, id: Date.now() }); window.clearTimeout(CoinFlash._t); CoinFlash._t = window.setTimeout(() => setV(null), 1300); }; return () => { __coinFn = null; }; }, []);
+    if (!v) return null;
+    return React.createElement("div", { key: v.id, className: "pop", style: { position: "fixed", left: "50%", top: "36%", transform: "translateX(-50%)", zIndex: 120, background: "#1a1d22f2", border: `1px solid ${C.gold}`, color: C.gold, fontWeight: 800, fontSize: 20, padding: "12px 20px", borderRadius: 16, display: "flex", alignItems: "center", gap: 8, pointerEvents: "none", boxShadow: "0 8px 30px #000a" } }, React.createElement(Coins, { size: 22, color: C.gold }), "+" + v.amt.toLocaleString("vi-VN") + " xu");
+}
+const coinFlash = (amt) => { if (__coinFn && amt > 0) __coinFn(amt); };
 function usePersist(key, initial) {
     const [v, setV] = useState(() => LS.get(key, initial));
     useEffect(() => { LS.set(key, v); }, [key, v]);
@@ -788,6 +803,8 @@ const AppCtx = React.createContext({});
 let WHEEL_DEG = 0;
 function App() {
     const [tab, setTab] = useState("home");
+    const [appTheme, setAppTheme] = usePersist("appTheme", "dark");
+    applyTheme(appTheme);
     const [dvAuthed, setDvAuthed] = React.useState(!DV_ON || DV.isAuthed());
     const [stack, setStack] = useState([]); // overlay routes: {type:'detail'|'reader', ...}
     const [sheet, setSheet] = useState(null); // bottom sheet/modal
@@ -809,6 +826,7 @@ function App() {
     const [checkinDay, setCheckinDay] = usePersist("checkinDay", "");
     const [progress, setProgress] = usePersist("progress", { b1: 3, b3: 5, w2: 2 });
     const [wffClaimed, setWffClaimed] = usePersistSet("wffClaimed", []);
+    const [bookmarks, setBookmarks] = usePersistSet("bookmarks", []);
     const [recVotes, setRecVotes] = usePersist("recVotes", {});
     const [readLog, setReadLog] = usePersist("readLog", { d: "", n: 0 });
     const [readClaim, setReadClaim] = usePersistSet("readClaim", []);
@@ -1009,6 +1027,7 @@ function App() {
             setSheet(null);
             try { track("topup", { channel: channel, coin: finalBase + (pkg.bonus || 0) }); } catch (e) {}
             flash(`Đã nạp ${(finalBase + (pkg.bonus || 0)).toLocaleString("vi-VN")} xu qua ${channel}${x2bonus ? " (+20% lần đầu 🎁)" : ""}`);
+            coinFlash(finalBase + (pkg.bonus || 0));
         };
         if (DV_ON) {
             const map = { 1500: "t1", 3000: "t2", 6000: "t3", 10000: "t4", 25000: "t5" };
@@ -1057,10 +1076,12 @@ function App() {
             }).catch(() => flash("Lỗi kết nối backend"));
             return;
         }
-        if (spend(ch.priceCoin, `Mở khóa ${b.title} · Ch.${ch.seq}`)) {
+        const _cdx = LS.get("dverse:codex", []); const _disc = _cdx.length >= 8 ? 0.10 : _cdx.length >= 5 ? 0.05 : 0;
+        const _price = Math.round(ch.priceCoin * (1 - _disc));
+        if (spend(_price, `Mở khóa ${b.title} · Ch.${ch.seq}`)) {
             setOwned((s) => new Set(s).add(ownKey(b, ch)));
-            addFan(b.id, ch.priceCoin);
-            track("unlock", { book: b.id, seq: ch.seq, coin: ch.priceCoin });
+            addFan(b.id, _price);
+            track("unlock", { book: b.id, seq: ch.seq, coin: _price });
             setSheet(null);
             if(typeof navigator!=='undefined'&&navigator.vibrate){navigator.vibrate(12);}
             flash(`Đã mở khóa Chương ${ch.seq}`);
@@ -1151,6 +1172,7 @@ function App() {
         setCheckinDay(todayStr);
         setStreak(ns);
         setCoinFree((x) => x + dayReward);
+        coinFlash(dayReward);
         setExp((x) => x + 25);
         setLedger((l) => [{ t: `\u0110i\u1EC3m danh ng\u00E0y ${ns}`, d: `+${dayReward} coin t\u1EB7ng`, k: "grant" }, ...l]);
         track("checkin", { streak: ns });
@@ -1345,6 +1367,7 @@ function App() {
             sheet && React.createElement(SheetHost, null),
             !onboarded && React.createElement(Onboarding, null),
             React.createElement(Toast, null), 
+            React.createElement(CoinFlash, null), 
             spinCtaBook && byId(spinCtaBook) && React.createElement("div", {className:"fade",style:{position:"fixed",left:"50%",bottom:148,transform:"translateX(-50%)",background:C.surface,border:`1px solid ${C.jade}44`,borderRadius:16,padding:"12px 16px",zIndex:80,minWidth:260,display:"flex",alignItems:"center",gap:12}},
                 React.createElement("div", {style:{flex:1}},
                     React.createElement("div", {style:{fontSize:12,color:C.sub,marginBottom:3}}, "D\u00F9ng coin v\u1EEBa nh\u1EADn \u0111\u1EC3 \u0111\u1ECDc ti\u1EBFp"),
@@ -1359,6 +1382,7 @@ function App() {
         return React.createElement("div", { style: { padding: "16px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" } },
             React.createElement("div", { style: { fontFamily: "Noto Serif, serif", fontSize: 24, fontWeight: 800, color: C.text } }, title),
             React.createElement("div", { className: "flex items-center", style: { gap: 8 } },
+                React.createElement("button", { onClick: () => setAppTheme((m) => m === "dark" ? "light" : "dark"), "aria-label": "Sáng/Tối", style: { width: 36, height: 36, borderRadius: 999, background: C.surface2, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center" } }, appTheme === "dark" ? React.createElement(Sun, { size: 16, color: C.gold }) : React.createElement(Moon, { size: 16, color: C.text })),
                 React.createElement("button", { onClick: () => goTab("community"), style: { width: 36, height: 36, borderRadius: 999, background: C.surface2, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center" } }, React.createElement(Users, { size: 16, color: C.jade })),
                 React.createElement("button", { onClick: () => push({ type: "notifications" }), style: { position: "relative", width: 36, height: 36, borderRadius: 999, background: C.surface2, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center" } },
                     React.createElement(Bell, { size: 16, color: C.text }),
@@ -1498,7 +1522,7 @@ function App() {
                         React.createElement("button", { onClick: () => setNewbieDismissed(true), style: { color: C.faint, fontSize: 18 } }, "\u00d7")),
                     ([["Registered", "Đăng ký thành công", true], ["ReadFirst", "Đọc chương đầu tiên", Object.keys(progress).length > 0], ["Follow", "Theo dõi 1 truyện", subscribed.size > 0], ["TopupFirst", "Nạp xu lần đầu", hasDeposited]]).map(([id, label, done], idx) => React.createElement("div", { key: id, className: "flex items-center", style: { gap: 12, padding: "7px 0", borderBottom: idx < 3 ? `1px solid ${C.line}` : "none" } },
                         React.createElement("div", { style: { width: 22, height: 22, borderRadius: 999, background: done ? C.jade : C.surface2, border: `1px solid ${done ? C.jade : C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } },
-                            done ? React.createElement(Check, { size: 13, color: C.ink }) : null),
+                            done ? React.createElement(Check, { size: 13, color: C.onDark }) : null),
                         React.createElement("span", { style: { flex: 1, fontSize: 13, color: done ? C.text : C.sub } }, label),
                         React.createElement("button", { onClick: () => { if (!done && id !== "Registered") { setCoinFree((c) => c + 10); flash("+10 coin · nhi\u1ec7m v\u1ee5 ho\u00e0n th\u00e0nh"); } }, disabled: done, style: { fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: done ? C.surface2 : C.jade, color: done ? C.faint : C.ink, border: done ? `1px solid ${C.line}` : "none" } }, done ? "\u2713" : "+10 coin")))),
                 React.createElement("div", { style: { padding: "6px 16px 2px" } },
@@ -1510,6 +1534,7 @@ function App() {
                                 React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: C.gold, letterSpacing: .5 } }, "BI\u00CAN T\u1EACP \u0110\u1EC0 C\u1EEC")),
                             React.createElement("div", { style: { fontFamily: "Noto Serif, serif", fontWeight: 800, fontSize: 19 } }, "Qu\u1EF7 B\u00ED Chi Ch\u1EE7"),
                             React.createElement("div", { className: "clamp2", style: { fontSize: 12, color: "#D6DCE2", marginTop: 4 } }, byId("b5").desc)))),
+                React.createElement("button", { onClick: () => { if (!checkedIn) checkin(); else flash("Hôm nay đã điểm danh rồi"); }, className: "flex items-center", style: { width: "calc(100% - 32px)", margin: "10px 16px 0", gap: 10, padding: "10px 14px", borderRadius: 14, background: checkedIn ? C.surface2 : `linear-gradient(135deg, ${C.coral}26, ${C.surface})`, border: `1px solid ${checkedIn ? C.line : `${C.coral}55`}` } }, React.createElement("span", { style: { fontSize: 22 } }, "\uD83D\uDD25"), React.createElement("div", { style: { flex: 1, minWidth: 0, textAlign: "left" } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 14, color: checkedIn ? C.text : C.coral } }, "Chuỗi " + streak + " ngày"), React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 1 } }, checkedIn ? "Đã điểm danh hôm nay · quay lại mai nhé" : "Điểm danh nhận coin · đừng để mất chuỗi")), checkedIn ? React.createElement("span", { style: { fontSize: 14, fontWeight: 800, color: C.jade } }, "✓") : React.createElement("span", { style: { fontSize: 12, fontWeight: 800, color: C.onDark, background: C.coral, padding: "5px 12px", borderRadius: 999 } }, "Điểm danh")),
                 React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, padding: "10px 16px 2px" } }, [["\uD83C\uDFB4", "Nh\u00E2n v\u1EADt", C.jade + "22", C.jade, () => push({ type: "gacha" })], ["\uD83E\uDDE7", "L\u00EC x\u00EC", "#C0392B33", "#E5736B", () => push({ type: "redpacket" })], ["\uD83C\uDF81", "T\u00E2n th\u1EE7", C.gold + "22", C.gold, () => push({ type: "newbie" })]].map(([emo, lb, bg, col, fn]) => React.createElement("button", { key: lb, onClick: fn, style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 14, background: bg, border: "1px solid " + col + "55" } }, React.createElement("span", { style: { fontSize: 24 } }, emo), React.createElement("span", { style: { fontSize: 12, fontWeight: 800, color: col } }, lb)))), 
                 React.createElement("div", { style: { padding: "8px 16px 2px" } },
                     React.createElement("div", { onClick: () => goTab("clip"), className: "flex items-center", style: { gap: 12, borderRadius: 16, padding: 14, cursor: "pointer", background: `linear-gradient(120deg, ${C.coral}, #2A0E1A)` } },
@@ -1657,7 +1682,7 @@ function App() {
         const onUp = () => { if (!drag.current) return; drag.current = null; setDx((d) => d < -56 ? -118 : 0); };
         return React.createElement("div", { style: { position: "relative", overflow: "hidden" }, onClickCapture: (e) => { if (moved.current) { e.stopPropagation(); e.preventDefault(); } } },
             React.createElement("div", { style: { position: "absolute", top: 0, right: 0, bottom: 1, display: "flex" } },
-                React.createElement("button", { onClick: () => { recVote(b); setDx(0); }, style: { width: 58, background: C.jade, color: C.ink, fontSize: 12, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3 } }, React.createElement(ThumbsUp, { size: 16 }), "Đề cử"),
+                React.createElement("button", { onClick: () => { recVote(b); setDx(0); }, style: { width: 58, background: C.jade, color: C.onDark, fontSize: 12, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3 } }, React.createElement(ThumbsUp, { size: 16 }), "Đề cử"),
                 React.createElement("button", { onClick: () => { toggleShelf(b); setDx(0); }, style: { width: 58, background: C.coral, color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3 } }, React.createElement(X, { size: 16 }), "Xóa")),
             React.createElement("div", { onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp, onPointerCancel: onUp, style: { position: "relative", background: C.ink, transform: `translateX(${dx}px)`, transition: drag.current ? "none" : "transform .2s", touchAction: "pan-y" } },
                 React.createElement(ListRow, { b: b })));
@@ -1669,7 +1694,7 @@ function App() {
             React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                 React.createElement("div", { className: "flex items-center", style: { gap: 6, marginBottom: 3 } },
                     React.createElement("span", { style: { fontSize: 9, fontWeight: 800, letterSpacing: .4, color: C.jade, background: `${C.jade}1A`, padding: "1px 6px", borderRadius: 4 } }, FMT_TAG[b.format] || b.format),
-                    (b.fresh <= 5 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#FF6B35", padding: "1px 6px", borderRadius: 4 } }, "Mới") : b.chapters.some((c) => c.tier === "PREMIUM" || c.tier === "EARLY") ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: C.ink, background: C.jade, padding: "1px 6px", borderRadius: 4 } }, "VIP") : null),
+                    (b.fresh <= 5 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#FF6B35", padding: "1px 6px", borderRadius: 4 } }, "Mới") : b.chapters.some((c) => c.tier === "PREMIUM" || c.tier === "EARLY") ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: C.onDark, background: C.jade, padding: "1px 6px", borderRadius: 4 } }, "VIP") : null),
                     React.createElement("span", { className: "flex items-center", style: { gap: 3, fontSize: 11, color: C.gold } }, React.createElement(Star, { size: 10, fill: C.gold, color: C.gold }), b.rating)),
                 React.createElement("div", { className: "clamp1", style: { fontWeight: 600, fontSize: 15 } }, b.title),
                 isImg
@@ -1755,7 +1780,7 @@ function App() {
         const toggleG = (g) => setGs((x) => x.includes(g) ? x.filter((y) => y !== g) : x.concat(g));
         const finish = () => { setReadPref(mode); setHomeAud(aud); setPrefGenres(gs); setOnboarded(true); flash("Đã cá nhân hóa trang Khám phá cho bạn"); };
         const pill = (active) => ({ flex: 1, padding: "16px 0", borderRadius: 14, fontWeight: 700, fontSize: 15, background: active ? C.jade : C.surface, color: active ? C.ink : C.text, border: "1.5px solid " + (active ? C.jade : C.line) });
-        const cont = (onClick, label) => React.createElement("button", { onClick: onClick, style: { width: "100%", padding: 15, borderRadius: 14, background: C.jade, color: C.ink, fontWeight: 800, fontSize: 16 } }, label);
+        const cont = (onClick, label) => React.createElement("button", { onClick: onClick, style: { width: "100%", padding: 15, borderRadius: 14, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 16 } }, label);
         return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 90, background: "linear-gradient(160deg, " + C.jadeDeep + ", " + C.ink + " 60%)", maxWidth: 460, margin: "0 auto", display: "flex", flexDirection: "column", justifyContent: "center", padding: 24 } },
             React.createElement("div", { style: { fontFamily: "Noto Serif, serif", fontWeight: 800, fontSize: 34, marginBottom: 6 } },
                 React.createElement("span", { style: { color: C.jade } }, "D"), "verse"),
@@ -1808,7 +1833,7 @@ function App() {
                             ["Thảo luận", "Đánh giá", "Xin truyện", "Tuyển tập"].map((t) => React.createElement("button", { key: t, onClick: () => setTag(t), style: { fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, whiteSpace: "nowrap", flexShrink: 0, color: tag === t ? "#fff" : C.sub, background: tag === t ? tagColor(t) : C.surface2, border: `1px solid ${tag === t ? tagColor(t) : C.line}` } }, t))),
                         React.createElement("div", { style: { display: "flex", gap: 8, flexShrink: 0 } },
                             React.createElement("button", { onClick: () => { setText(""); setComposeOpen(false); }, style: { padding: "7px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, color: C.sub, background: C.surface2, border: `1px solid ${C.line}` } }, "H\u1EE7y"),
-                            React.createElement("button", { onClick: () => { addPost(text, tag); setText(""); setComposeOpen(false); }, style: { display: "flex", alignItems: "center", gap: 5, background: C.jade, color: C.ink, padding: "7px 14px", borderRadius: 999, fontWeight: 700, fontSize: 13 } }, React.createElement(Send, { size: 13 }), "\u0110\u0103ng"))))
+                            React.createElement("button", { onClick: () => { addPost(text, tag); setText(""); setComposeOpen(false); }, style: { display: "flex", alignItems: "center", gap: 5, background: C.jade, color: C.onDark, padding: "7px 14px", borderRadius: 999, fontWeight: 700, fontSize: 13 } }, React.createElement(Send, { size: 13 }), "\u0110\u0103ng"))))
                 : React.createElement("div", { onClick: () => setComposeOpen(true), style: { display: "flex", alignItems: "center", gap: 10, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 14, padding: "10px 14px", cursor: "pointer" } },
                     React.createElement("div", { style: { width: 32, height: 32, borderRadius: 999, background: `linear-gradient(135deg,${C.jade},${C.jadeDeep})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, flexShrink: 0 } }, "B"),
                     React.createElement("div", { style: { flex: 1, fontSize: 13, color: C.faint } }, "B\u1EA1n ngh\u0129 g\u00EC v\u1EC1 truy\u1EC7n h\u00F4m nay?"),
@@ -1847,7 +1872,7 @@ function App() {
                             p.c),
                         React.createElement("button", { onClick: () => flash("Đã sao chép liên kết bài viết"), className: "flex items-center", style: { gap: 5, fontSize: 13, color: C.sub } },
                             React.createElement(Share2, { size: 15 }),
-                            "Chia s\u1EBB"))), (fi === 0 && !fpDismiss ? React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, background: `${C.jade}14`, border: `1px solid ${C.jade}55`, borderRadius: 14, padding: "12px 14px", marginBottom: 12 } }, React.createElement("div", { style: { flex: 1, fontSize: 13, color: C.text } }, "Theo dõi ", React.createElement("b", null, p.u), " để không bỏ lỡ bài mới?"), React.createElement("button", { onClick: () => { flash("Đã theo dõi " + p.u); setFpDismiss(true); }, style: { fontSize: 12, fontWeight: 700, color: C.ink, background: C.jade, padding: "7px 13px", borderRadius: 999 } }, "Theo dõi"), React.createElement("button", { onClick: () => setFpDismiss(true), style: { fontSize: 12, fontWeight: 600, color: C.sub, padding: "7px 6px" } }, "Bỏ qua")) : null)));
+                            "Chia s\u1EBB"))), (fi === 0 && !fpDismiss ? React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, background: `${C.jade}14`, border: `1px solid ${C.jade}55`, borderRadius: 14, padding: "12px 14px", marginBottom: 12 } }, React.createElement("div", { style: { flex: 1, fontSize: 13, color: C.text } }, "Theo dõi ", React.createElement("b", null, p.u), " để không bỏ lỡ bài mới?"), React.createElement("button", { onClick: () => { flash("Đã theo dõi " + p.u); setFpDismiss(true); }, style: { fontSize: 12, fontWeight: 700, color: C.onDark, background: C.jade, padding: "7px 13px", borderRadius: 999 } }, "Theo dõi"), React.createElement("button", { onClick: () => setFpDismiss(true), style: { fontSize: 12, fontWeight: 600, color: C.sub, padding: "7px 6px" } }, "Bỏ qua")) : null)));
             }) : React.createElement(Empty, { icon: React.createElement(Users, { size: 36, color: C.faint }), text: "Ch\u01B0a c\u00F3 b\u00E0i. H\u00E3y l\u00E0 ng\u01B0\u1EDDi \u0111\u1EA7u ti\u00EAn chia s\u1EBB!" }))));
     }
     function ClipScreen() {
@@ -2009,12 +2034,12 @@ function App() {
                     React.createElement(List, { size: 13 }),
                     sort === "update" ? "Cập nhật" : "Mới thêm"),
                 React.createElement("button", { onClick: () => setView((v) => v === "grid" ? "list" : "grid"), style: { flexShrink: 0, width: 34, height: 34, borderRadius: 999, background: C.surface2, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center" } }, React.createElement(view === "grid" ? List : Grid, { size: 15, color: C.sub }))),
-            React.createElement("div", { className: "row flex items-center", style: { gap: 8, overflowX: "auto", padding: "0 16px 8px" } }, React.createElement("button", { onClick: () => setShelfGrp(null), style: { flexShrink: 0, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: shelfGrp === null ? C.surface2 : "transparent", border: `1px solid ${C.line}`, color: shelfGrp === null ? C.text : C.sub } }, "Tất cả"), groups.map((g) => React.createElement("button", { key: g.id, onClick: () => setShelfGrp(g.id), className: "flex items-center", style: { flexShrink: 0, gap: 6, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: shelfGrp === g.id ? `${g.color}22` : "transparent", border: `1px solid ${shelfGrp === g.id ? g.color : C.line}`, color: shelfGrp === g.id ? C.text : C.sub } }, React.createElement("span", { style: { width: 8, height: 8, borderRadius: 999, background: g.color } }), g.name)), React.createElement("button", { onClick: () => setGrpForm((x) => !x), style: { flexShrink: 0, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: "transparent", border: `1px dashed ${C.line}`, color: C.jade } }, "+ Nhóm")), grpForm && React.createElement("div", { style: { margin: "0 16px 10px", background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12 } }, React.createElement("input", { value: grpName, onChange: (e) => setGrpName(e.target.value), placeholder: "Tên nhóm…", style: { width: "100%", boxSizing: "border-box", background: C.surface2, border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 10px", color: C.text, fontSize: 13, marginBottom: 10 } }), React.createElement("div", { className: "flex items-center", style: { gap: 8, marginBottom: 12 } }, ["#16B9C6", "#F0654E", "#E6B450", "#B57BEE", "#4A90E2", "#5CB85C"].map((c) => React.createElement("button", { key: c, onClick: () => setGrpColor(c), style: { width: 26, height: 26, borderRadius: 999, background: c, border: grpColor === c ? "2px solid #fff" : "2px solid transparent" } }))), React.createElement("div", { className: "flex items-center", style: { gap: 8, justifyContent: "flex-end" } }, React.createElement("button", { onClick: () => setGrpForm(false), style: { fontSize: 13, fontWeight: 600, color: C.sub, padding: "7px 12px" } }, "Hủy"), React.createElement("button", { onClick: () => { setGroups((gs) => [...gs, { id: "g" + Date.now(), name: grpName.trim() || "Nhóm mới", color: grpColor }]); setGrpForm(false); setGrpName(""); }, style: { fontSize: 13, fontWeight: 700, color: C.ink, background: C.jade, padding: "7px 14px", borderRadius: 999 } }, "Tạo"))), assignFor && React.createElement("div", { onClick: () => setAssignFor(null), style: { position: "fixed", inset: 0, background: "#0008", zIndex: 60, display: "flex", alignItems: "flex-end" } }, React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 460, margin: "0 auto", background: C.surface, borderRadius: "16px 16px 0 0", padding: 16 } }, React.createElement("div", { style: { fontWeight: 700, fontSize: 15, marginBottom: 12 } }, "Thêm vào nhóm"), groups.length ? groups.map((g) => React.createElement("button", { key: g.id, onClick: () => { setBookGroup((m) => Object.assign(Object.assign({}, m), { [assignFor]: g.id })); flash("Đã thêm vào " + g.name); setAssignFor(null); }, className: "flex items-center", style: { width: "100%", gap: 10, padding: "11px 0", borderBottom: `1px solid ${C.line}` } }, React.createElement("span", { style: { width: 12, height: 12, borderRadius: 999, background: g.color } }), React.createElement("span", { style: { fontSize: 14, fontWeight: 600, color: C.text } }, g.name))) : React.createElement("div", { style: { fontSize: 13, color: C.sub, padding: "8px 0" } }, "Chưa có nhóm. Tạo bằng nút + Nhóm ở trên."), bookGroup[assignFor] && React.createElement("button", { onClick: () => { setBookGroup((m) => { const n = Object.assign({}, m); delete n[assignFor]; return n; }); flash("Đã gỡ khỏi nhóm"); setAssignFor(null); }, style: { marginTop: 10, fontSize: 13, fontWeight: 700, color: C.coral } }, "Gỡ khỏi nhóm"))), list.length ? (view === "list" ? React.createElement("div", { style: { padding: "4px 16px 8px" } }, list.map((b) => React.createElement(SwipeRow, { b: b }))) : React.createElement("div", { className: "grid grid-cols-3", style: { gap: 14, padding: "8px 16px" } }, list.map((b) => {
+            React.createElement("div", { className: "row flex items-center", style: { gap: 8, overflowX: "auto", padding: "0 16px 8px" } }, React.createElement("button", { onClick: () => setShelfGrp(null), style: { flexShrink: 0, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: shelfGrp === null ? C.surface2 : "transparent", border: `1px solid ${C.line}`, color: shelfGrp === null ? C.text : C.sub } }, "Tất cả"), groups.map((g) => React.createElement("button", { key: g.id, onClick: () => setShelfGrp(g.id), className: "flex items-center", style: { flexShrink: 0, gap: 6, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: shelfGrp === g.id ? `${g.color}22` : "transparent", border: `1px solid ${shelfGrp === g.id ? g.color : C.line}`, color: shelfGrp === g.id ? C.text : C.sub } }, React.createElement("span", { style: { width: 8, height: 8, borderRadius: 999, background: g.color } }), g.name)), React.createElement("button", { onClick: () => setGrpForm((x) => !x), style: { flexShrink: 0, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: "transparent", border: `1px dashed ${C.line}`, color: C.jade } }, "+ Nhóm")), grpForm && React.createElement("div", { style: { margin: "0 16px 10px", background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12 } }, React.createElement("input", { value: grpName, onChange: (e) => setGrpName(e.target.value), placeholder: "Tên nhóm…", style: { width: "100%", boxSizing: "border-box", background: C.surface2, border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 10px", color: C.text, fontSize: 13, marginBottom: 10 } }), React.createElement("div", { className: "flex items-center", style: { gap: 8, marginBottom: 12 } }, ["#16B9C6", "#F0654E", "#E6B450", "#B57BEE", "#4A90E2", "#5CB85C"].map((c) => React.createElement("button", { key: c, onClick: () => setGrpColor(c), style: { width: 26, height: 26, borderRadius: 999, background: c, border: grpColor === c ? "2px solid #fff" : "2px solid transparent" } }))), React.createElement("div", { className: "flex items-center", style: { gap: 8, justifyContent: "flex-end" } }, React.createElement("button", { onClick: () => setGrpForm(false), style: { fontSize: 13, fontWeight: 600, color: C.sub, padding: "7px 12px" } }, "Hủy"), React.createElement("button", { onClick: () => { setGroups((gs) => [...gs, { id: "g" + Date.now(), name: grpName.trim() || "Nhóm mới", color: grpColor }]); setGrpForm(false); setGrpName(""); }, style: { fontSize: 13, fontWeight: 700, color: C.onDark, background: C.jade, padding: "7px 14px", borderRadius: 999 } }, "Tạo"))), assignFor && React.createElement("div", { onClick: () => setAssignFor(null), style: { position: "fixed", inset: 0, background: "#0008", zIndex: 60, display: "flex", alignItems: "flex-end" } }, React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 460, margin: "0 auto", background: C.surface, borderRadius: "16px 16px 0 0", padding: 16 } }, React.createElement("div", { style: { fontWeight: 700, fontSize: 15, marginBottom: 12 } }, "Thêm vào nhóm"), groups.length ? groups.map((g) => React.createElement("button", { key: g.id, onClick: () => { setBookGroup((m) => Object.assign(Object.assign({}, m), { [assignFor]: g.id })); flash("Đã thêm vào " + g.name); setAssignFor(null); }, className: "flex items-center", style: { width: "100%", gap: 10, padding: "11px 0", borderBottom: `1px solid ${C.line}` } }, React.createElement("span", { style: { width: 12, height: 12, borderRadius: 999, background: g.color } }), React.createElement("span", { style: { fontSize: 14, fontWeight: 600, color: C.text } }, g.name))) : React.createElement("div", { style: { fontSize: 13, color: C.sub, padding: "8px 0" } }, "Chưa có nhóm. Tạo bằng nút + Nhóm ở trên."), bookGroup[assignFor] && React.createElement("button", { onClick: () => { setBookGroup((m) => { const n = Object.assign({}, m); delete n[assignFor]; return n; }); flash("Đã gỡ khỏi nhóm"); setAssignFor(null); }, style: { marginTop: 10, fontSize: 13, fontWeight: 700, color: C.coral } }, "Gỡ khỏi nhóm"))), list.length ? (view === "list" ? React.createElement("div", { style: { padding: "4px 16px 8px" } }, list.map((b) => React.createElement(SwipeRow, { b: b }))) : React.createElement("div", { className: "grid grid-cols-3", style: { gap: 14, padding: "8px 16px" } }, list.map((b) => {
                 const prog = progress[b.id] ? Math.round((progress[b.id] / b.chapters.length) * 100) : 6;
                 const unread = b.chapters.length - (progress[b.id] || 0);
                 return (React.createElement("div", { key: b.id, onClick: () => push({ type: "detail", bid: b.id }), style: { cursor: "pointer", position: "relative" } },
                     React.createElement(Cover, { b: b, w: "100%", h: 150 }),
-                    pinned.has(b.id) && React.createElement("span", { style: { position: "absolute", top: 5, left: 5, fontSize: 9, fontWeight: 800, color: C.ink, background: C.gold, padding: "2px 6px", borderRadius: 5 } }, "GHIM"),
+                    pinned.has(b.id) && React.createElement("span", { style: { position: "absolute", top: 5, left: 5, fontSize: 9, fontWeight: 800, color: C.onDark, background: C.gold, padding: "2px 6px", borderRadius: 5 } }, "GHIM"),
                     unread > 0 && React.createElement("span", { style: { position: "absolute", top: 4, right: 4, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 999, background: C.coral, color: "#fff", fontSize: 9.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,.4)", pointerEvents: "none" } }, "+" + unread),
                     React.createElement("button", { onClick: (e) => { e.stopPropagation(); setAssignFor(b.id); }, style: { position: "absolute", top: 32, right: 4, width: 24, height: 24, borderRadius: 999, background: "#000000aa", display: "flex", alignItems: "center", justifyContent: "center" } }, bookGroup[b.id] ? React.createElement("span", { style: { width: 10, height: 10, borderRadius: 999, background: (groups.find((g) => g.id === bookGroup[b.id]) || {}).color || C.sub } }) : React.createElement("span", { style: { fontSize: 15, fontWeight: 400, color: "#fff", lineHeight: 1 } }, "+")),
                     React.createElement("button", { onClick: (e) => { e.stopPropagation(); togglePin(b); }, style: { position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: 999, background: "#000000aa", display: "flex", alignItems: "center", justifyContent: "center" } },
@@ -2164,7 +2189,7 @@ function App() {
             React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, padding: "0 16px", marginBottom: 16 } },
                 freeLeft > 0
                     ? React.createElement("button", { onClick: () => doSpin(false), disabled: spinning, style: { padding: "14px", borderRadius: 16, fontWeight: 800, fontSize: 17, background: `linear-gradient(135deg,${C.jade},#1aad7e)`, color: "#fff", boxShadow: "0 4px 16px rgba(31,138,112,0.4)" } }, spinning ? "Đang quay\u2026" : "QUAY MI\u1EC4N PH\u00CD")
-                    : React.createElement("button", { onClick: () => doSpin(false), disabled: spinning, style: { padding: "14px", borderRadius: 16, fontWeight: 800, fontSize: 17, background: `linear-gradient(135deg,${C.gold},#f4a800)`, color: C.ink, boxShadow: "0 4px 16px rgba(232,184,75,0.4)" } }, spinning ? "Đang quay\u2026" : "QUAY \u2014 20 coin"),
+                    : React.createElement("button", { onClick: () => doSpin(false), disabled: spinning, style: { padding: "14px", borderRadius: 16, fontWeight: 800, fontSize: 17, background: `linear-gradient(135deg,${C.gold},#f4a800)`, color: C.onDark, boxShadow: "0 4px 16px rgba(232,184,75,0.4)" } }, spinning ? "Đang quay\u2026" : "QUAY \u2014 20 coin"),
                 React.createElement("button", { onClick: () => doSpin(true), disabled: spinning, style: { padding: "12px", borderRadius: 16, fontWeight: 700, fontSize: 15, background: C.surface2, color: C.text, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } },
                     "3 L\u01af\u1ee2T \u2014 50 coin",
                     React.createElement("span", { style: { background: C.coral, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, padding: "2px 6px" } }, "-17%")
@@ -2219,7 +2244,7 @@ function App() {
                         const amt = [5, 10, 15, 20, 25, 30, 50][i];
                         const isMax = i === 6;
                         return React.createElement("div", { key: d, style: { textAlign: "center", flex: 1 } },
-                            React.createElement("div", { style: { width: 32, height: 32, margin: "0 auto", borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: done ? C.jade : (isMax ? `${C.gold}22` : C.surface2), border: `1px solid ${done ? C.jade : (isMax ? C.gold : C.line)}` } }, done ? React.createElement(Check, { size: 15, color: C.ink }) : React.createElement(Coins, { size: 13, color: isMax ? C.gold : C.faint })),
+                            React.createElement("div", { style: { width: 32, height: 32, margin: "0 auto", borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: done ? C.jade : (isMax ? `${C.gold}22` : C.surface2), border: `1px solid ${done ? C.jade : (isMax ? C.gold : C.line)}` } }, done ? React.createElement(Check, { size: 15, color: C.onDark }) : React.createElement(Coins, { size: 13, color: isMax ? C.gold : C.faint })),
                             React.createElement("div", { style: { fontSize: 9.5, fontWeight: 700, color: isMax ? C.gold : C.sub, marginTop: 4 } }, "+" + amt),
                             React.createElement("div", { style: { fontSize: 9, color: C.faint, marginTop: 1 } }, d));
                     })),
@@ -2243,7 +2268,7 @@ function App() {
                         const done = taskDoneToday(id);
                         return (React.createElement("div", { key: id, className: "flex items-center", style: { justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${C.line}` } },
                             React.createElement("div", { className: "flex items-center", style: { gap: 8 } },
-                                React.createElement("div", { style: { width: 26, height: 26, borderRadius: 999, background: done ? C.jade : C.surface2, display: "flex", alignItems: "center", justifyContent: "center" } }, done ? React.createElement(Check, { size: 14, color: C.ink }) : React.createElement(Coins, { size: 13, color: C.gold })),
+                                React.createElement("div", { style: { width: 26, height: 26, borderRadius: 999, background: done ? C.jade : C.surface2, display: "flex", alignItems: "center", justifyContent: "center" } }, done ? React.createElement(Check, { size: 14, color: C.onDark }) : React.createElement(Coins, { size: 13, color: C.gold })),
                                 React.createElement("span", { style: { fontSize: 13 } }, label)),
                             React.createElement("button", { onClick: () => claimTask(id, rw), disabled: done, style: { padding: "6px 13px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: done ? C.surface2 : C.jade, color: done ? C.faint : C.ink, border: done ? `1px solid ${C.line}` : "none" } }, done ? "Đã nhận" : `+${rw} coin`)));
                     })),
@@ -2316,13 +2341,13 @@ function App() {
             React.createElement("div", { style: { padding: "4px 16px 24px" } },
                 React.createElement("div", { style: { background: `linear-gradient(135deg, ${C.jadeDeep}, ${C.ink})`, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, marginBottom: 14 } },
                     React.createElement("div", { className: "flex items-center", style: { gap: 12 } },
-                        React.createElement("div", { style: { width: 48, height: 48, borderRadius: 999, background: `linear-gradient(135deg,${C.jade},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Noto Serif, serif", fontWeight: 800, fontSize: 20, color: C.ink } }, "\u0110"),
+                        React.createElement("div", { style: { width: 48, height: 48, borderRadius: 999, background: `linear-gradient(135deg,${C.jade},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Noto Serif, serif", fontWeight: 800, fontSize: 20, color: C.onDark } }, "\u0110"),
                         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                             React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#fff" } }, "\u0110\u1ea1o h\u1eefu \u0110\u1ee9c"),
                             React.createElement("div", { className: "flex items-center", style: { gap: 6, marginTop: 3, flexWrap: "wrap" } },
-                                React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: C.ink, background: C.gold, padding: "2px 8px", borderRadius: 6 } }, "TI\u00caN PHONG"),
+                                React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: C.onDark, background: C.gold, padding: "2px 8px", borderRadius: 6 } }, "TI\u00caN PHONG"),
                                 React.createElement("span", { style: { fontSize: 12, color: "#ffffffcc" } }, "B\u1eadc K\u00fd \u00b7 h\u01b0\u1edfng 65% kh\u00f4ng kh\u00f3a \u0111\u1ed9c quy\u1ec1n")))),
-                    React.createElement("button", { onClick: () => flash("T\u1ea1o truy\u1ec7n m\u1edbi \u2014 m\u1edf tr\u00ecnh so\u1ea1n th\u1ea3o (demo)"), style: { width: "100%", marginTop: 14, padding: 12, borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800, fontSize: 15 } }, "\u0110\u0103ng truy\u1ec7n m\u1edbi")),
+                    React.createElement("button", { onClick: () => flash("T\u1ea1o truy\u1ec7n m\u1edbi \u2014 m\u1edf tr\u00ecnh so\u1ea1n th\u1ea3o (demo)"), style: { width: "100%", marginTop: 14, padding: 12, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 15 } }, "\u0110\u0103ng truy\u1ec7n m\u1edbi")),
                 React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "8px 2px 12px" } },
                     React.createElement("span", { style: { fontSize: 12, fontWeight: 800, letterSpacing: .6, color: C.jade } }, "KIẾM TIỀN"),
                     React.createElement("div", { style: { flex: 1, height: 1, background: C.line } })),
@@ -2434,7 +2459,7 @@ function App() {
                             React.createElement("span", { style: { fontWeight: 700 } }, "V\u00ED coin"),
                             React.createElement("button", {onClick:()=>setSheet({type:"currencyGuide"}),style:{marginLeft:4,width:26,height:26,borderRadius:999,background:C.surface2,border:`1px solid ${C.line}`,color:C.sub,fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},"?")),
                         
-                        React.createElement("button", { onClick: () => setSheet({ type: "topup" }), className: "flex items-center", style: { gap: 5, background: C.jade, color: C.ink, padding: "7px 14px", borderRadius: 999, fontWeight: 700, fontSize: 13 } },
+                        React.createElement("button", { onClick: () => setSheet({ type: "topup" }), className: "flex items-center", style: { gap: 5, background: C.jade, color: C.onDark, padding: "7px 14px", borderRadius: 999, fontWeight: 700, fontSize: 13 } },
                             React.createElement(Plus, { size: 15 }),
                             "N\u1EA1p coin")),
                     React.createElement("div", { className: "flex", style: { gap: 10 } },
@@ -2526,8 +2551,8 @@ function App() {
                         b.type === "text" && React.createElement("span", { style: { fontSize: 11.5, color: C.sub }, },
                             "D\u1ECBch: ",
                             React.createElement("span", { style: { color: C.text, fontWeight: 600 } }, b.translator)),
-                        React.createElement("span", { className: "flex items-center", style: { gap: 4, fontSize: 11.5, fontWeight: 700, color: C.ink, background: C.jade, padding: "4px 9px", borderRadius: 8 } },
-                            React.createElement(Gift, { size: 12, color: C.ink }),
+                        React.createElement("span", { className: "flex items-center", style: { gap: 4, fontSize: 11.5, fontWeight: 700, color: C.onDark, background: C.jade, padding: "4px 9px", borderRadius: 8 } },
+                            React.createElement(Gift, { size: 12, color: C.onDark }),
                             b.chapters.filter((c) => c.tier === "FREE").length,
                             b.type === "text" ? " ch\u01B0\u01A1ng \u0111\u1EA7u mi\u1EC5n ph\u00ED · chờ là đọc free chương sau" : " t\u1EADp \u0111\u1EA7u mi\u1EC5n ph\u00ED · chờ là đọc free tập sau"),
                         React.createElement("span", { style: { fontSize: 11.5, color: C.faint } },
@@ -2535,7 +2560,7 @@ function App() {
                             Math.round(b.chapters.reduce((s, c) => s + c.words, 0) / 1000),
                             "k ch\u1EEF")),
                     React.createElement("div", { className: "flex", style: { gap: 8, marginTop: 14 } },
-                        React.createElement("button", { onClick: () => openChapter(b, resumeCh), style: { flex: 1, padding: "12px", borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800, fontSize: 15 } }, progress[b.id] > 1 ? `Đọc tiếp · ${unit}${progress[b.id]}` : "Bắt đầu đọc"),
+                        React.createElement("button", { onClick: () => openChapter(b, resumeCh), style: { flex: 1, padding: "12px", borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 15 } }, progress[b.id] > 1 ? `Đọc tiếp · ${unit}${progress[b.id]}` : "Bắt đầu đọc"),
                         React.createElement("button", { onClick: () => toggleSub(b), className: "flex items-center", style: { gap: 5, padding: "12px 14px", borderRadius: 12, background: subscribed.has(b.id) ? `${C.coral}22` : C.surface2, border: `1px solid ${subscribed.has(b.id) ? C.coral : C.line}`, color: subscribed.has(b.id) ? C.coral : C.text, fontWeight: 700, fontSize: 13 } },
                             React.createElement(Bell, { size: 16, fill: subscribed.has(b.id) ? C.coral : "none" }),
                             subscribed.has(b.id) ? "Đang theo dõi" : "Theo dõi"),
@@ -2629,7 +2654,7 @@ function App() {
             detailTab==="chapters" && React.createElement(React.Fragment, null,
                 React.createElement("div", { style: { padding: "12px 16px 4px" } },
                     React.createElement("div", { className: "flex items-center", style: { gap: 10, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 } },
-                        React.createElement("div", { style: { width: 40, height: 40, borderRadius: 999, background: `linear-gradient(135deg, ${C.jade}, ${C.jadeDeep})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15, color: C.ink, flexShrink: 0 } }, b.title[0]),
+                        React.createElement("div", { style: { width: 40, height: 40, borderRadius: 999, background: `linear-gradient(135deg, ${C.jade}, ${C.jadeDeep})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15, color: C.onDark, flexShrink: 0 } }, b.title[0]),
                         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                             React.createElement("div", { className: "flex items-center", style: { gap: 6, marginBottom: 3 } },
                                 React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: C.text } }, "Tác giả"),
@@ -2644,9 +2669,9 @@ function App() {
                         React.createElement("div", { className: "flex items-center", style: { gap: 8 } },
                             React.createElement("span", { style: { fontWeight: 600, fontSize: 14, color: isRead ? C.faint : isCur ? C.jade : (owned_ || ch.tier === "FREE" ? C.text : C.sub) } }, ch.title),
                             isRead && React.createElement("span", { style: { fontSize: 12, color: C.jade, fontWeight: 700 } }, "✓"),
-                            ch.seq <= 3 && ch.tier !== "FREE" && React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: C.ink, background: C.jade, padding: "1px 6px", borderRadius: 5 } }, "Miễn phí"),
+                            ch.seq <= 3 && ch.tier !== "FREE" && React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: C.onDark, background: C.jade, padding: "1px 6px", borderRadius: 5 } }, "Miễn phí"),
                             React.createElement(TierTag, { tier: ch.tier }),
-                            isCur && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: C.ink, background: C.jade, padding: "2px 7px", borderRadius: 999 } }, "▶ Đang đọc")),
+                            isCur && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: C.onDark, background: C.jade, padding: "2px 7px", borderRadius: 999 } }, "▶ Đang đọc")),
                         isWff && React.createElement("div", { className: "flex items-center", style: { gap: 5, marginTop: 5, fontSize: 11, color: C.gold } },
                             React.createElement(Clock, { size: 12 }),
                             "Mi\u1EC5n ph\u00ED sau ",
@@ -2680,13 +2705,13 @@ function App() {
                     __above ? React.createElement("div", { className: "flex items-center", style: { gap: 6, marginBottom: 10, padding: "8px 12px", borderRadius: 10, background: `${C.coral}14`, border: `1px solid ${C.coral}44` } }, React.createElement("span", { style: { fontSize: 13, color: C.coral, fontWeight: 800 } }, "↑"), React.createElement("span", { style: { fontSize: 12, color: C.text, fontWeight: 600 } }, "Còn ", React.createElement("b", { style: { color: C.coral } }, __gap + " phiếu"), " là vượt hạng #" + (wkRank - 1) + ", bỏ phiếu ngay!")) : null,
                     React.createElement("div", { style: { background: C.surface2, borderRadius: 14, padding: 14, border: `1px solid ${C.line}` } },
                         React.createElement("div", { className: "flex items-center", style: { gap: 10, marginBottom: 10 } },
-                            React.createElement("div", { style: { width: 34, height: 34, borderRadius: 999, background: C.jade, color: C.ink, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 } }, "Đ"),
+                            React.createElement("div", { style: { width: 34, height: 34, borderRadius: 999, background: C.jade, color: C.onDark, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 } }, "Đ"),
                             React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                                 React.createElement("div", { className: "flex items-center", style: { gap: 6 } },
                                     React.createElement("span", { style: { fontWeight: 700, fontSize: 14, color: C.text } }, "Đạo hữu Đức"),
                                     React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: C.gold, background: `${C.gold}1A`, padding: "2px 7px", borderRadius: 6 } }, fanTitle(myPts))),
                                 React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 2 } }, nn ? (coinFmt(nn - myPts) + " điểm fan lên " + ntitle) : "Đã đạt đỉnh nhóm fan")),
-                            React.createElement("button", { onClick: () => setSheet({ type: "donate", bid: b.id }), style: { fontSize: 12, fontWeight: 700, color: C.ink, background: C.gold, padding: "7px 13px", borderRadius: 999, whiteSpace: "nowrap" } }, myPts > 0 ? "Cổ vũ thêm" : "Gia nhập")),
+                            React.createElement("button", { onClick: () => setSheet({ type: "donate", bid: b.id }), style: { fontSize: 12, fontWeight: 700, color: C.onDark, background: C.gold, padding: "7px 13px", borderRadius: 999, whiteSpace: "nowrap" } }, myPts > 0 ? "Cổ vũ thêm" : "Gia nhập")),
                         React.createElement("div", { style: { height: 7, background: C.surface, borderRadius: 9, overflow: "hidden" } },
                             React.createElement("div", { style: { width: pct + "%", height: "100%", background: `linear-gradient(90deg,${C.jade},${C.gold})` } }))));
             })(),
@@ -2743,7 +2768,7 @@ function TextReader({ b, seq }) {
     };
         const ch = b.chapters.find((c) => c.seq === seq);
         const paras = chContent(b, ch);
-        const th = READER_THEMES[rTheme];
+        const th = READER_THEMES[rTheme === "Tự động" ? ((typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "Tối" : "Sáng") : rTheme] || READER_THEMES["Giấy"];
         const k = `${b.id}:${seq}`;
         const cdata = React.useMemo(() => cdataFor(b.id, seq), [b.id, seq, comments]);
         const [showSettings, setShowSettings] = useState(false);
@@ -2829,9 +2854,11 @@ function TextReader({ b, seq }) {
                         b.chapters.length)),
                 React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", fontSize: 10, color: C.jade, fontWeight: 700, gap: 1, flexShrink: 0 } },
                     React.createElement("span", null, "\u25CF " + (ch.priceCoin || 0) + " xu"),
-                    React.createElement("span", { style: { color: "#FFB23E" } }, "\u70ED " + Math.round((b.rating || 4.5) * 20))),
+                    React.createElement("span", { style: { color: "#FFB23E" } }, "\uD83D\uDD25 " + Math.round((b.rating || 4.5) * 20))),
                 React.createElement("button", { onClick: () => setSheet({ type: "toc", bid: b.id, seq }), style: { color: th.text } },
                     React.createElement(List, { size: 19 })),
+                React.createElement("button", { onClick: () => { const bk = b.id + ":" + seq; setBookmarks((s) => { const n = new Set(s); n.has(bk) ? n.delete(bk) : n.add(bk); flash(n.has(bk) ? "Đã đánh dấu chương" : "Đã bỏ đánh dấu"); return n; }); }, "aria-label": "Đánh dấu", style: { color: bookmarks.has(b.id + ":" + seq) ? C.gold : th.text } },
+                    React.createElement(Star, { size: 19, fill: bookmarks.has(b.id + ":" + seq) ? C.gold : "none", color: bookmarks.has(b.id + ":" + seq) ? C.gold : th.text })),
                 React.createElement("button", { onClick: () => setTts((x) => !x), style: { color: tts ? C.jade : th.text } }, tts ? React.createElement(Pause, { size: 19 }) : React.createElement(Volume2, { size: 19 })),
                 React.createElement("button", { onClick: () => toggleOffline(b, ch), style: { color: offline.has(`${b.id}:${seq}`) ? C.jade : th.text } },
                     React.createElement(Download, { size: 19 })),
@@ -2863,7 +2890,7 @@ function TextReader({ b, seq }) {
                 }),
                 React.createElement("div", { style: { marginTop: 24, padding: "10px 14px", borderRadius: 10, background: th.soft + "88", border: `1px solid ${C.jade}22` } },
                     React.createElement("div", { className: "flex items-center", style: { gap: 6, marginBottom: 6 } },
-                        React.createElement("div", { style: { width: 32, height: 32, borderRadius: 999, background: `linear-gradient(135deg, ${C.jade}, #0E2A28)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, color: C.ink, flexShrink: 0 } }, b.author ? b.author[0] : "T"),
+                        React.createElement("div", { style: { width: 32, height: 32, borderRadius: 999, background: `linear-gradient(135deg, ${C.jade}, #0E2A28)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, color: C.onDark, flexShrink: 0 } }, b.author ? b.author[0] : "T"),
                         React.createElement("span", { style: { fontWeight: 600, fontSize: 13, color: th.text } }, b.author || "Tác giả"),
                         React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#FFB23E", background: "#FFB23E22", padding: "1px 6px", borderRadius: 4 } }, "Tác giả nói")),
                     React.createElement("div", { style: { fontSize: 13, color: th.sub, lineHeight: 1.6, fontStyle: "italic" } }, "Cảm ơn đạo hữu đã đọc đến đây! Chương mới ra đều đặn mỗi ngày. Các bạn nhớ bỏ phiếu ủng hộ nhé!")),
@@ -2894,10 +2921,10 @@ function TextReader({ b, seq }) {
                         React.createElement("span", { style: { fontSize: 13, color: th.sub } }, "C\u1ea7n: " + nextCh.priceCoin + " coin"),
                         React.createElement("span", { style: { fontSize: 13, color: th.sub } }, "B\u1ea1n c\u00f3: " + coin + " coin")),
                     coin >= nextCh.priceCoin
-                        ? React.createElement("button", { onClick: goNext, style: { width: "100%", padding: "12px", borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800, fontSize: 14 } }, "M\u1edf ngay " + nextCh.priceCoin + " coin")
+                        ? React.createElement("button", { onClick: goNext, style: { width: "100%", padding: "12px", borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 14 } }, "M\u1edf ngay " + nextCh.priceCoin + " coin")
                         : React.createElement("div", { className: "flex", style: { gap: 8 } },
                             React.createElement("button", { onClick: goNext, style: { flex: 1, padding: "12px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.line}`, color: C.faint, fontWeight: 700, fontSize: 13 } }, "Kh\u00f4ng đ\u1ee7 coin"),
-                            React.createElement("button", { onClick: () => setSheet({ type: "topup" }), style: { flex: 1, padding: "12px", borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800, fontSize: 13 } }, "N\u1ea1p th\u00eam"))),
+                            React.createElement("button", { onClick: () => setSheet({ type: "topup" }), style: { flex: 1, padding: "12px", borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 13 } }, "N\u1ea1p th\u00eam"))),
                 React.createElement("div", { style: { marginTop: 28, padding: "20px 0", borderTop: `1px solid ${th.soft}` } },
                     React.createElement("div", { className: "flex items-center", style: { justifyContent: "center", gap: 28, marginBottom: 18 } },
                         React.createElement("button", { onClick: () => likeChapter(b, seq), className: "flex", style: { flexDirection: "column", alignItems: "center", gap: 4, color: likedCh.has(`${b.id}:${seq}`) ? C.coral : th.sub } },
@@ -2931,7 +2958,7 @@ function TextReader({ b, seq }) {
                         React.createElement("button", { onClick: () => goPrevChapter(b, seq), disabled: seq === 1, className: "flex items-center", style: { gap: 2, padding: "13px 16px", borderRadius: 12, background: th.soft, color: th.text, fontWeight: 700, fontSize: 14, opacity: seq === 1 ? 0.45 : 1 } },
                             React.createElement(ChevronLeft, { size: 17 }),
                             "Tr\u01B0\u1EDBc"),
-                        React.createElement("button", { onClick: goNext, style: { flex: 1, padding: 14, borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800, fontSize: 15 } }, nextCh ? (isOwned(b, nextCh) ? `Chương ${nextCh.seq}` : `Mở khóa Chương ${nextCh.seq}`) : "Hết chương mới nhất"))),
+                        React.createElement("button", { onClick: goNext, style: { flex: 1, padding: 14, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 15 } }, nextCh ? (isOwned(b, nextCh) ? `Chương ${nextCh.seq}` : `Mở khóa Chương ${nextCh.seq}`) : "Hết chương mới nhất"))),
                 React.createElement("div", { style: { marginTop: 24 } },
                     React.createElement("div", { className: "flex items-center", style: { justifyContent: "space-between", marginBottom: 12 } },
                         React.createElement("span", { style: { fontWeight: 700, fontSize: 15 } },
@@ -2943,7 +2970,7 @@ function TextReader({ b, seq }) {
                         return (React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: `1px solid ${th.soft}` } },
                             React.createElement("div", { className: "flex items-center", style: { gap: 8 } },
                                 React.createElement("span", { style: { fontWeight: 600, fontSize: 13 } }, c.u),
-                                c === best && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: C.ink, background: C.gold, padding: "1px 6px", borderRadius: 5 } }, "BEST"),
+                                c === best && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: C.onDark, background: C.gold, padding: "1px 6px", borderRadius: 5 } }, "BEST"),
                                 c.hot && c !== best && React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: C.coral } }, "HOT")),
                             React.createElement("div", { style: { fontSize: 14, marginTop: 4, lineHeight: 1.5 } }, c.x),
                             React.createElement("div", { className: "flex items-center", style: { justifyContent: "space-between", marginTop: 6 } },
@@ -2967,7 +2994,7 @@ function TextReader({ b, seq }) {
                 React.createElement("div", { style: { position: "absolute", left: 0, top: 0, height: 2, width: scrollPct + "%", background: C.jade, transition: "width .1s" } })),
             tts && (React.createElement("div", { className: "up", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 20, maxWidth: 460, margin: "0 auto", background: C.surface, borderTop: `1px solid ${C.line}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 } },
                 React.createElement("div", { style: { width: 38, height: 38, borderRadius: 999, background: C.jade, display: "flex", alignItems: "center", justifyContent: "center" } },
-                    React.createElement(Pause, { size: 18, color: C.ink })),
+                    React.createElement(Pause, { size: 18, color: C.onDark })),
                 React.createElement("div", { style: { flex: 1 } },
                     React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: C.text } }, "Nghe truy\u1EC7n \u00B7 gi\u1ECDng n\u1EEF mi\u1EC1n B\u1EAFc"),
                     React.createElement("div", { style: { fontSize: 11, color: C.sub } },
@@ -3013,7 +3040,7 @@ function TextReader({ b, seq }) {
                             if (!canvas) return;
                             const url = canvas.toDataURL("image/png");
                             const a = document.createElement("a"); a.href = url; a.download = "dverse-share.png"; a.click();
-                        }, style: { flex: 1, padding: "11px", borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 700, fontSize: 14 } }, "Tải ảnh"),
+                        }, style: { flex: 1, padding: "11px", borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 700, fontSize: 14 } }, "Tải ảnh"),
                         React.createElement("button", { onClick: () => {
                             const url = "https://dverse.vn/book/" + b.id;
                             if (navigator.share) { navigator.share({ title: b.title, url: url }); }
@@ -3028,7 +3055,7 @@ function TextReader({ b, seq }) {
                 React.createElement("div", { className: "up", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9031, maxWidth: 460, margin: "0 auto", background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "18px 18px 26px" } },
                     React.createElement("div", { style: { fontWeight: 700, marginBottom: 16 } }, "T\u00F9y ch\u1EC9nh \u0111\u1ECDc"),
                     React.createElement("div", { style: { fontSize: 12, color: C.sub, marginBottom: 8 } }, "N\u1EC1n"),
-                    React.createElement("div", { className: "flex", style: { gap: 8, marginBottom: 16 } }, ["T\u1ED1i", "Gi\u1EA5y", "S\u00E1ng"].map(function(t) { return React.createElement("button", { key: t, onClick: function(){setRTheme(t);}, style: { flex: 1, padding: "10px", borderRadius: 10, fontWeight: 700, fontSize: 14, background: READER_THEMES[t].bg, color: READER_THEMES[t].text, border: "2px solid " + (rTheme === t ? C.jade : C.line) } }, t === "Gi\u1EA5y" ? "Kem" : t); })),
+                    React.createElement("div", { className: "flex", style: { gap: 6, marginBottom: 16 } }, ["Tự động", "T\u1ED1i", "Gi\u1EA5y", "S\u00E1ng", "Vàng"].map(function(t) { var rt = READER_THEMES[t] || { bg: C.surface2, text: C.text }; return React.createElement("button", { key: t, onClick: function(){setRTheme(t);}, style: { flex: 1, padding: "10px 4px", borderRadius: 10, fontWeight: 700, fontSize: 12, background: rt.bg, color: rt.text, border: "2px solid " + (rTheme === t ? C.jade : C.line) } }, t === "Tự động" ? "Auto" : t === "Gi\u1EA5y" ? "Kem" : t); })),
                     React.createElement("div", { style: { marginBottom: 16 } },
                         React.createElement("div", { className: "flex items-center", style: { justifyContent: "space-between", marginBottom: 8 } },
                             React.createElement("span", { className: "flex items-center", style: { gap: 8, color: C.text, fontSize: 14 } },
@@ -3166,7 +3193,7 @@ function TextReader({ b, seq }) {
                     React.createElement("span", { style: { fontSize: 9 } }, cdata.chap.length)),
                 React.createElement("button", { onClick: () => goPrevChapter(b, seq), disabled: seq === 1, style: { padding: "12px 14px", borderRadius: 12, background: "#ffffff1a", color: "#fff", fontWeight: 700, fontSize: 14, opacity: seq === 1 ? 0.4 : 1 } },
                     React.createElement(ChevronLeft, { size: 16 })),
-                React.createElement("button", { onClick: () => goNextChapter(b, nextCh), style: { flex: 1, padding: 13, borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800, fontSize: 15 } }, nextCh ? (isOwned(b, nextCh) ? `Tập ${nextCh.seq}` : `Mở khóa Tập ${nextCh.seq}`) : "Hết tập mới nhất"))));
+                React.createElement("button", { onClick: () => goNextChapter(b, nextCh), style: { flex: 1, padding: 13, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 15 } }, nextCh ? (isOwned(b, nextCh) ? `Tập ${nextCh.seq}` : `Mở khóa Tập ${nextCh.seq}`) : "Hết tập mới nhất"))));
     }
     /* ============================ SHEETS ============================ */
     function SheetHost() {
@@ -3228,6 +3255,7 @@ function TextReader({ b, seq }) {
             { id: "pool_ngontinh", name: "Ngôn Tình · Đặc Biệt", icon: "\u2764\uFE0F", licensed: true, rarity: ["UR 1%", "SSR 4%", "SR 18%", "R 77%"], odds: [["UR",0.01],["SSR",0.04],["SR",0.18],["R",0.77]], cost1: 120, cost10: 1000 },
         ];
         const CHAR_NAMES = ["Kiếm Thánh Lã Bố","Ma Vương Kiều","Tiên Nữ Ngọc Long","Đại Hiệp Tôn Ngộ","Tiểu Thư Bạch Tuyết","Long Vương Trần","Hắc Phong Nguyệt","Quỷ Y Thánh Thủ"];
+        const CHAR_BID = {"Kiếm Thánh Lã Bố":"c1","Ma Vương Kiều":"c1","Tiên Nữ Ngọc Long":"c2","Đại Hiệp Tôn Ngộ":"c1","Tiểu Thư Bạch Tuyết":"c2","Long Vương Trần":"c1","Hắc Phong Nguyệt":"c2","Quỷ Y Thánh Thủ":"c2"};
         const CHAR_EMOJIS = ["\u2694\uFE0F","\uD83D\uDDE1\uFE0F","\uD83C\uDF38","\uD83D\uDCA5","\u2744\uFE0F","\uD83D\uDD25","\uD83C\uDF19","\uD83D\uDC8E"];
         const MOCK_RANK = CHAR_NAMES.map((n,i) => ({ name:n, votes: 9800-i*800, emoji: CHAR_EMOJIS[i], rarity:i===0?"SSR":i<3?"SR":"R" }));
         const pool = POOLS[poolIdx];
@@ -3293,7 +3321,7 @@ function TextReader({ b, seq }) {
             setEssence(function (e) { return e + 5; }); setEssClaim(today);
             flash("\uD83C\uDF81 +5 Tinh Hồn miễn phí!");
         };
-        const TIERS = [[3, "Khung avatar Sưu Tầm"], [5, "Huy hiệu Bạc + giảm 5% mở chương"], [8, "Huy hiệu Vàng + ngoại truyện độc quyền"]];
+        const TIERS = [[3, "Khung avatar Sưu Tầm"], [5, "Huy hiệu Bạc + giảm 5% mở chương"], [8, "Huy hiệu Vàng + giảm 10% mở chương"]];
         const claimTier = function (n, label) {
             if (codexCount < n || tiersClaimed.indexOf(n) >= 0) return;
             setTiersClaimed(tiersClaimed.concat([n]));
@@ -3336,7 +3364,7 @@ function TextReader({ b, seq }) {
                         React.createElement("div", {style:{height:"100%",width:`${Math.min(100,Math.round(codexCount/8*100))}%`,background:`linear-gradient(90deg,${C.jade},${C.gold})`,transition:"width .3s"}})),
                     React.createElement("div", {style:{display:"flex",gap:6}},
                         TIERS.map(function(t){ var reached=codexCount>=t[0]; var done=tiersClaimed.indexOf(t[0])>=0; return React.createElement("button", {key:t[0],onClick:function(){claimTier(t[0],t[1]);},disabled:!reached||done,style:{flex:1,fontSize:11,fontWeight:800,padding:"7px 4px",borderRadius:8,color:done?C.sub:reached?C.ink:C.sub,background:done?C.surface2:reached?C.gold:C.surface2,border:`1px solid ${reached&&!done?C.gold:C.line}`,minHeight:0}}, done?`\u2713 ${t[0]}/8`:`Mốc ${t[0]}`); })),
-                    React.createElement("div", {style:{fontSize:10,color:C.sub,marginTop:8,lineHeight:1.4}}, "Mốc 3 → khung avatar · Mốc 5 → huy hiệu Bạc + giảm giá · Mốc 8 → huy hiệu Vàng + ngoại truyện")),
+                    React.createElement("div", {style:{fontSize:10,color:C.sub,marginTop:8,lineHeight:1.4}}, "Mốc 3 → khung avatar · Mốc 5 → giảm 5% mở chương · Mốc 8 → giảm 10% mở chương")),
                 React.createElement("div", {style:{marginBottom:14}},
                     React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}},
                         CHAR_NAMES.map(function(nm,ix){ var have=codex.indexOf(nm)>=0; return React.createElement("div", {key:nm,style:{background:have?C.surface2:`${C.line}22`,borderRadius:10,padding:"9px 4px",textAlign:"center",border:`1px solid ${have?`${C.jade}55`:C.line}`,opacity:have?1:0.5}},
@@ -3370,7 +3398,7 @@ function TextReader({ b, seq }) {
                     React.createElement("div", {style:{fontSize:24}}, c.emoji),
                     React.createElement("div", {style:{flex:1}},
                         React.createElement("div", {style:{fontWeight:700,fontSize:14,color:C.text}}, c.name),
-                        React.createElement("div", {style:{fontSize:11,color:rcol(c.rarity),fontWeight:700}}, c.rarity)),
+                        React.createElement("div", {style:{fontSize:11,color:rcol(c.rarity),fontWeight:700}}, c.rarity), (CHAR_BID[c.name] && byId(CHAR_BID[c.name]) ? React.createElement("div", {onClick: function(e){ e.stopPropagation(); push({type:"detail", bid:CHAR_BID[c.name]}); }, style:{fontSize:10,color:C.jade,fontWeight:600,marginTop:1,cursor:"pointer"}}, "Đọc: " + byId(CHAR_BID[c.name]).title) : null)),
                     React.createElement("div", {style:{fontWeight:700,fontSize:13,color:C.gold,minWidth:54,textAlign:"right"}}, c.votes.toLocaleString("vi-VN")),
                     React.createElement("button", { onClick: () => castVote(c.name), style: { marginLeft: 4, fontSize: 11, fontWeight: 700, color: essence<1?C.sub:C.jade, background: essence<1?"transparent":`${C.jade}1A`, border: `1px solid ${essence<1?C.line:C.jade}`, borderRadius: 8, padding: "5px 10px", flexShrink: 0, minHeight: 0 } }, "Vote \u2728")))));
     }
@@ -3481,7 +3509,7 @@ function TextReader({ b, seq }) {
                         const claimed = i < claimedCount;
                         const isToday = i === claimedCount && canCheckin;
                         return React.createElement("div", { key: i, style: { textAlign: "center", borderRadius: 10, padding: "8px 2px", background: claimed ? C.jade + "22" : isToday ? C.gold + "1A" : C.surface2, border: "1px solid " + (claimed ? C.jade : isToday ? C.gold : C.line) } },
-                            React.createElement("div", { style: { width: 26, height: 26, margin: "0 auto", borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: claimed ? C.jade : "transparent" } }, claimed ? React.createElement(Check, { size: 14, color: C.ink }) : React.createElement(Coins, { size: 13, color: isToday ? C.gold : C.faint })),
+                            React.createElement("div", { style: { width: 26, height: 26, margin: "0 auto", borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: claimed ? C.jade : "transparent" } }, claimed ? React.createElement(Check, { size: 14, color: C.onDark }) : React.createElement(Coins, { size: 13, color: isToday ? C.gold : C.faint })),
                             React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: claimed ? C.jade : isToday ? C.gold : C.sub, marginTop: 3 } }, "+" + amt),
                             React.createElement("div", { style: { fontSize: 8.5, color: C.faint, marginTop: 1 } }, "N" + (i + 1)));
                     })),
@@ -3491,7 +3519,7 @@ function TextReader({ b, seq }) {
                     const claimed = tasksClaimed.includes(t.id);
                     return React.createElement("div", { key: t.id, className: "flex items-center", style: { justifyContent: "space-between", gap: 10, padding: "12px 14px", borderRadius: 12, background: C.surface, border: "1px solid " + C.line, marginBottom: 8 } },
                         React.createElement("div", { className: "flex items-center", style: { gap: 10, minWidth: 0 } },
-                            React.createElement("div", { style: { width: 30, height: 30, borderRadius: 999, flexShrink: 0, background: claimed ? C.jade : C.surface2, display: "flex", alignItems: "center", justifyContent: "center" } }, claimed ? React.createElement(Check, { size: 15, color: C.ink }) : React.createElement(Coins, { size: 14, color: C.gold })),
+                            React.createElement("div", { style: { width: 30, height: 30, borderRadius: 999, flexShrink: 0, background: claimed ? C.jade : C.surface2, display: "flex", alignItems: "center", justifyContent: "center" } }, claimed ? React.createElement(Check, { size: 15, color: C.onDark }) : React.createElement(Coins, { size: 14, color: C.gold })),
                             React.createElement("div", { style: { minWidth: 0 } },
                                 React.createElement("div", { style: { fontSize: 13.5, fontWeight: 600, color: C.text } }, t.label),
                                 React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 1 } }, "+" + t.rw + " coin" + (t.sub ? " · " + t.sub : "")))),
@@ -3572,6 +3600,7 @@ function TextReader({ b, seq }) {
         const b = byId(sheet.bid), ch = b.chapters.find((c) => c.seq === sheet.seq);
         const covered = (pass && ch.tier === "STANDARD") || (pass === "vip" && ch.tier === "EARLY");
         const canWff = ch.tier === "STANDARD" && !pass && !isOwned(b, ch) && !wffClaimed.has(b.id + ":" + todayStr);
+        const _cdx = LS.get("dverse:codex", []); const _disc = _cdx.length >= 8 ? 0.10 : _cdx.length >= 5 ? 0.05 : 0; const _eff = Math.round(ch.priceCoin * (1 - _disc));
         return (React.createElement("div", { style: { padding: "0 18px", textAlign: "center" } },
             React.createElement("div", { style: { width: 56, height: 56, borderRadius: 16, background: `${C.gold}1A`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } },
                 React.createElement(Lock, { size: 26, color: C.gold })),
@@ -3592,18 +3621,16 @@ function TextReader({ b, seq }) {
                     ch.priceCoin,
                     " coin")),
             React.createElement("div", { style: { fontSize: 11, color: C.faint, textAlign: "center", marginBottom: 10 } }, "Chờ là đọc free · DVERSE+ đọc liền · VIP đọc sớm"),
-            ch.tier === "STANDARD" && !pass && (canWff ? (React.createElement("button", { onClick: () => claimWff(b, ch), className: "flex items-center", style: { width: "100%", justifyContent: "center", gap: 8, marginBottom: 12, padding: 15, borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800, fontSize: 15 } }, React.createElement(Clock, { size: 17 }), "Chờ là đọc free · nhận chương hôm nay")) : (React.createElement("div", { style: { marginBottom: 12, padding: "12px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.line}` } }, React.createElement("div", { className: "flex items-center", style: { justifyContent: "center", gap: 6, fontSize: 13, color: C.gold } }, React.createElement(Clock, { size: 14 }), "Chương miễn phí kế tiếp sau ", React.createElement(Countdown, null)), React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 4, textAlign: "center" } }, "Mỗi truyện mở 1 chương miễn phí mỗi ngày · chờ là đọc")))),
-            covered ? (React.createElement("button", { onClick: () => unlock(b, ch), style: { width: "100%", padding: 14, borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800 } },
+            ch.tier === "STANDARD" && !pass && (canWff ? (React.createElement("button", { onClick: () => claimWff(b, ch), className: "flex items-center", style: { width: "100%", justifyContent: "center", gap: 8, marginBottom: 12, padding: 15, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800, fontSize: 15 } }, React.createElement(Clock, { size: 17 }), "Chờ là đọc free · nhận chương hôm nay")) : (React.createElement("div", { style: { marginBottom: 12, padding: "12px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.line}` } }, React.createElement("div", { className: "flex items-center", style: { justifyContent: "center", gap: 6, fontSize: 13, color: C.gold } }, React.createElement(Clock, { size: 14 }), "Chương miễn phí kế tiếp sau ", React.createElement(Countdown, null)), React.createElement("div", { style: { fontSize: 11, color: C.sub, marginTop: 4, textAlign: "center" } }, "Mỗi truyện mở 1 chương miễn phí mỗi ngày · chờ là đọc")))),
+            covered ? (React.createElement("button", { onClick: () => unlock(b, ch), style: { width: "100%", padding: 14, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800 } },
                 "\u0110\u1ECDc b\u1EB1ng g\u00F3i ",
-                pass === "vip" ? "VIP" : "DVERSE+")) : coin >= ch.priceCoin ? (React.createElement("button", { onClick: () => unlock(b, ch), style: { width: "100%", padding: 14, borderRadius: 12, background: C.gold, color: C.ink, fontWeight: 800 } },
-                "M\u1EDF kh\u00F3a \u00B7 ",
-                ch.priceCoin,
-                " coin")) : (React.createElement(React.Fragment, null,
+                pass === "vip" ? "VIP" : "DVERSE+")) : coin >= _eff ? (React.createElement("button", { onClick: () => unlock(b, ch), style: { width: "100%", padding: 14, borderRadius: 12, background: C.gold, color: C.onDark, fontWeight: 800 } },
+                (_disc > 0 ? React.createElement(React.Fragment, null, "M\u1EDF kh\u00F3a \u00B7 ", React.createElement("span", { style: { textDecoration: "line-through", opacity: 0.55, marginRight: 5, fontWeight: 600 } }, ch.priceCoin), _eff + " coin  \u2212" + Math.round(_disc * 100) + "%") : ("M\u1EDF kh\u00F3a \u00B7 " + ch.priceCoin + " coin")))) : (React.createElement(React.Fragment, null,
                 React.createElement("div", { style: { background: `${C.coral}14`, color: C.coral, fontSize: 13, padding: "10px", borderRadius: 10, marginBottom: 10 } },
                     "Kh\u00F4ng \u0111\u1EE7 coin. C\u1EA7n th\u00EAm ",
                     ch.priceCoin - coin,
                     " coin."),
-                React.createElement("button", { onClick: () => setSheet({ type: "topup" }), style: { width: "100%", padding: 14, borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800 } }, "N\u1EA1p coin ngay"))),
+                React.createElement("button", { onClick: () => setSheet({ type: "topup" }), style: { width: "100%", padding: 14, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800 } }, "N\u1EA1p coin ngay"))),
             (ch.tier === "STANDARD" || ch.tier === "EARLY") && !covered && (() => {
                 const today = new Date().toISOString().slice(0, 10);
                 const left = 5 - (adDay.d === today ? adDay.n : 0);
@@ -3642,7 +3669,7 @@ null));
         const para = kind === "para" && !sheet.webtoon ? chContent(b, sheet.seq)[sheet.idx] : null;
         return (React.createElement("div", { style: { padding: "0 18px" } },
             React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 8, borderBottom: `1px solid ${C.line}`, paddingBottom: 8 } },
-                    React.createElement("button", { style: { fontSize: 13, fontWeight: 700, color: C.jade, background: "transparent", border: "none", padding: "2px 0", borderBottom: `2px solid ${C.jade}` } }, "\u5168\u90E8 " + list.length),
+                    React.createElement("button", { style: { fontSize: 13, fontWeight: 700, color: C.jade, background: "transparent", border: "none", padding: "2px 0", borderBottom: `2px solid ${C.jade}` } }, "Tất cả " + list.length),
                     React.createElement("button", { style: { fontSize: 13, fontWeight: 600, color: C.sub, background: "transparent", border: "none", padding: "2px 0" } }, "H\u00ecnh \u1ea3nh 0")),
                 React.createElement("div", { className: "flex items-center", style: { justifyContent: "space-between", marginBottom: 4 } },
                 React.createElement("div", { style: { fontWeight: 700, fontSize: 16 } }, kind === "para" ? (sheet.webtoon ? `Panel ${sheet.idx + 1}` : "Bình luận đoạn") : "Bình luận chương"),
@@ -3658,9 +3685,9 @@ null));
                 const best = bestOf(list);
                 return (React.createElement("div", { key: (c.u || "") + "_" + i, style: { padding: "11px 0", borderBottom: `1px solid ${C.line}` } },
                     React.createElement("div", { className: "flex items-center", style: { gap: 8 } },
-                        React.createElement("span", { style: { fontSize: 10, color: C.faint, marginRight: 2 } }, String(i+1) + "\u697C"),
+                        React.createElement("span", { style: { fontSize: 10, color: C.faint, marginRight: 2 } }, "Tầng " + (i + 1)),
                         React.createElement("span", { style: { fontWeight: 600, fontSize: 13 } }, c.u),
-                        c === best && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: C.ink, background: C.gold, padding: "1px 6px", borderRadius: 5 } }, "BEST"),
+                        c === best && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: C.onDark, background: C.gold, padding: "1px 6px", borderRadius: 5 } }, "BEST"),
                         c.hot && c !== best && React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: C.coral } }, "HOT")),
                     React.createElement("div", { style: { fontSize: 14, marginTop: 4, lineHeight: 1.5 } }, c.x),
                     React.createElement("div", { className: "flex items-center", style: { justifyContent: "space-between", marginTop: 6 } },
@@ -3672,7 +3699,7 @@ null));
             React.createElement("div", { className: "flex", style: { gap: 8, marginTop: 14, position: "sticky", bottom: 0, background: C.surface, paddingBottom: 4 } },
                 React.createElement("input", { value: text, onChange: (e) => setText(e.target.value), placeholder: "Vi\u1EBFt b\u00ECnh lu\u1EADn\u2026", style: { flex: 1, background: C.surface2, border: `1px solid ${C.line}`, borderRadius: 999, padding: "11px 16px", color: C.text, fontSize: 14, outline: "none" } }),
                 React.createElement("button", { onClick: () => { if (!text.trim())
-                        return; addComment(b, sheet.seq, kind === "para" ? sheet.idx : null, text.trim()); setText(""); }, style: { background: C.jade, color: C.ink, fontWeight: 700, padding: "0 18px", borderRadius: 999, fontSize: 14 } }, "G\u1EEDi"))));
+                        return; addComment(b, sheet.seq, kind === "para" ? sheet.idx : null, text.trim()); setText(""); }, style: { background: C.jade, color: C.onDark, fontWeight: 700, padding: "0 18px", borderRadius: 999, fontSize: 14 } }, "G\u1EEDi"))));
     }
     function DonateSheet() {
         const { sheet, setSheet, donate, flash, coin, addFan } = React.useContext(AppCtx);
@@ -3716,7 +3743,7 @@ null));
                 React.createElement("div", { style: { fontSize: 10, color: C.sub, marginTop: 3 } }, p.tier))))),
             React.createElement("div", { className: "flex items-center", style: { gap: 8, marginBottom: 16 } },
                 React.createElement("input", { type: "number", placeholder: "Số coin tùy chọn…", value: customAmt, onChange: e => setCustomAmt(e.target.value), style: { flex: 1, padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.surface2, color: C.text, fontSize: 14 } }),
-                React.createElement("button", { onClick: () => { doDonate(parseInt(customAmt, 10) || 0); setCustomAmt(""); }, style: { padding: "10px 16px", borderRadius: 10, background: C.jade, color: C.ink, fontWeight: 700, fontSize: 14 } }, "Gửi")),
+                React.createElement("button", { onClick: () => { doDonate(parseInt(customAmt, 10) || 0); setCustomAmt(""); }, style: { padding: "10px 16px", borderRadius: 10, background: C.jade, color: C.onDark, fontWeight: 700, fontSize: 14 } }, "Gửi")),
             donors.length > 0 && React.createElement("div", { style: { borderTop: `1px solid ${C.line}`, paddingTop: 12 } },
                 React.createElement("div", { style: { fontWeight: 600, fontSize: 13, marginBottom: 8, color: C.text } }, "🏆 Top Minh Chủ"),
                 donors.slice(0, 5).map((d, i) => React.createElement("div", { key: d.userId, className: "flex items-center", style: { gap: 8, padding: "6px 0", borderBottom: `1px solid ${C.line}22` } },
@@ -3742,7 +3769,7 @@ null));
                     React.createElement(Sparkles, { size: 20, color: C.jade, style: { margin: "0 auto" } }),
                     React.createElement("div", { style: { fontWeight: 800, fontSize: 18, marginTop: 6 } }, "+25"),
                     React.createElement("div", { style: { fontSize: 11, color: C.sub } }, "EXP"))),
-            React.createElement("button", { onClick: () => setSheet(null), style: { width: "100%", padding: 14, borderRadius: 12, background: C.jade, color: C.ink, fontWeight: 800 } }, "Nh\u1EADn")));
+            React.createElement("button", { onClick: () => setSheet(null), style: { width: "100%", padding: 14, borderRadius: 12, background: C.jade, color: C.onDark, fontWeight: 800 } }, "Nh\u1EADn")));
     }
     /* ============================ SHARED ============================ */
     function Card({ children }) { return React.createElement("div", { style: { background: C.surface, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, marginBottom: 14 } }, children); }
