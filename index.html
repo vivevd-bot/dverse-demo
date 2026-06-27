@@ -1284,6 +1284,7 @@ function App() {
     const top = stack[stack.length - 1];
     /* ----- render ----- */
     const _appCtx = {
+        bookmarks, setBookmarks,
         sheet, setSheet, tab, setTab, stack, setStack,
         rTheme, setRTheme, fontSize, setFontSize, lineH, setLineH,
         serif, setSerif, bright, setBright, eyeCare, setEyeCare,
@@ -2763,7 +2764,7 @@ function TextReader({ b, seq }) {
         flash, pop, push, markRead, vote, recVote, isOwned,
         goNextChapter, goPrevChapter, reportComment, likeBtn,
         toggleOffline, autoSub, bestOf, todayStr,
-        giftedCh, setGiftedCh, spend, addFan, donateMap
+        giftedCh, setGiftedCh, spend, addFan, donateMap, bookmarks, setBookmarks
     } = React.useContext(AppCtx);
     const giftKey = `${b.id}:${seq}`;
     const alreadyGifted = giftedCh[giftKey];
