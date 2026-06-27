@@ -806,6 +806,7 @@ function App() {
     const [tab, setTab] = useState("home");
     const [appTheme, setAppTheme] = usePersist("appTheme", "dark");
     applyTheme(appTheme);
+    React.useLayoutEffect(() => { applyTheme(appTheme); try { document.documentElement.style.background = C.ink; document.body.style.background = C.ink; document.body.style.color = C.text; } catch (e) {} }, [appTheme]);
     const [dvAuthed, setDvAuthed] = React.useState(!DV_ON || DV.isAuthed());
     const [stack, setStack] = useState([]); // overlay routes: {type:'detail'|'reader', ...}
     const [sheet, setSheet] = useState(null); // bottom sheet/modal
