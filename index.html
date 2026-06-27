@@ -54,6 +54,9 @@ button,[role=button]{min-height:44px;min-width:44px}
 <script>window.__CLIPS={};</script>
 <script>
 if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(r){ r.unregister(); });
+  });
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 window.addEventListener('online', function(){ var el=document.getElementById('_offline'); if(el) el.style.display='none'; });
