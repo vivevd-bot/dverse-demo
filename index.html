@@ -130,8 +130,8 @@ const Film = _ic('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3
 /* ============================ THEME ============================ */
 const C_DARK = {
     ink: "#0E141B", surface: "#161F2A", surface2: "#1E2A38", surface3: "#26354620",
-    line: "#2A3744", jade: "#16B9C6", jadeDeep: "#15806B", gold: "#E6B450",
-    goldDeep: "#B8852E", coral: "#F0654E", coralLight: "#F5826B", text: "#EAF0F4", sub: "#94A3B0", faint: "#8B99A7", onDark: "#0E141B",
+    line: "#2A3744", jade: "#16B9C6", jadeDeep: "#15806B", gold: "#D2A85A",
+    goldDeep: "#B8852E", coral: "#D9705C", coralLight: "#E08A78", text: "#EAF0F4", sub: "#94A3B0", faint: "#8B99A7", onDark: "#0E141B",
 };
 const C_LIGHT = {
     ink: "#F4F6F9", surface: "#FFFFFF", surface2: "#EDF1F5", surface3: "#E3E9EF",
@@ -568,7 +568,7 @@ const Cover = React.memo(({ b, w = 64, h = 88, r = 12, motifSize = 34 }) => {
 });
 const Stars = ({ n, size = 12 }) => (React.createElement("span", { className: "flex items-center", style: { gap: 1 } }, [1, 2, 3, 4, 5].map((i) => React.createElement(Star, { key: i, size: size, fill: i <= Math.round(n) ? C.gold : "none", color: i <= Math.round(n) ? C.gold : C.faint }))));
 const TierTag = ({ tier }) => {
-    const m = { FREE: ["Miễn phí", C.jade], STANDARD: ["Tiêu chuẩn", C.sub], EARLY: ["⚡ Sớm", "#FF8C00"], PREMIUM: ["Premium", "#B57BEE"] };
+    const m = { FREE: ["Miễn phí", C.jade], STANDARD: ["Tiêu chuẩn", C.sub], EARLY: ["⚡ Sớm", "#C99A52"], PREMIUM: ["Premium", "#9486B8"] };
     const [t, col] = m[tier];
     return React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: col, border: `1px solid ${col}55`, padding: "1px 6px", borderRadius: 6 } }, t);
 };
@@ -1151,7 +1151,7 @@ function App() {
     };
     const donate = (b, kind, amt) => {
         if (!spend(amt, `Donate ${b.title} · ${kind}`))
-            return setSheet({ type: "topup" });
+            setSheet({ type: "topup" }); return false;
         track("donate", { book: b.id, kind: kind, amt: amt });
         setDonateMap((m) => (Object.assign(Object.assign({}, m), { [b.id]: (m[b.id] || 0) + amt })));
         addFan(b.id, amt);
@@ -1161,10 +1161,11 @@ function App() {
             if (bonus) {
                 setOwned((s) => new Set(s).add(ownKey(b, bonus)));
                 flash(`Đạt mốc cộng đồng · Mở miễn phí ${bonus.title} (bonus)`);
-                return;
+                return true;
             }
         }
         flash(`Cảm ơn! +${amt} điểm fan`);
+        return true;
     };
     const checkin = () => {
         if (checkedIn)
@@ -1233,10 +1234,19 @@ function App() {
         else
             setSheet({ type: "paywall", bid: b.id, seq: prev.seq });
     };
-    const jumpChapter = (b, ch) => { setSheet(null); pop(); if (isOwned(b, ch))
-        push({ type: "reader", bid: b.id, seq: ch.seq });
-    else
-        setSheet({ type: "paywall", bid: b.id, seq: ch.seq }); };
+    const jumpChapter = (b, ch) => {
+        setSheet(null); pop();
+        if (isOwned(b, ch)) return push({ type: "reader", bid: b.id, seq: ch.seq });
+        if (autoSub.has(b.id) && coin >= ch.priceCoin) {
+            spend(ch.priceCoin, `Tự động mua · ${b.title} Ch.${ch.seq}`);
+            setOwned((s) => new Set(s).add(ownKey(b, ch)));
+            addFan(b.id, ch.priceCoin);
+            flash(`Tự động mua Chương ${ch.seq}`);
+            return push({ type: "reader", bid: b.id, seq: ch.seq });
+        }
+        if (autoSub.has(b.id)) flash("Hết coin · đã tạm dừng tự động mua chương");
+        setSheet({ type: "paywall", bid: b.id, seq: ch.seq });
+    };
     const adPass = (b, ch) => {
         const today = new Date().toISOString().slice(0, 10);
         const used = adDay.d === today ? adDay.n : 0;
@@ -2138,20 +2148,15 @@ function App() {
             const spinEl = (targetDeg, onDone) => {
                 const fromDeg = WHEEL_DEG;
                 WHEEL_DEG = targetDeg;
-                el.style.transition = "";
-                el.style.transform = `rotate(${fromDeg}deg)`;
                 setSpinning(true);
-                // double rAF: ensures browser paints fromDeg before applying transition
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        el.style.transition = "transform 3.2s cubic-bezier(.16,.67,.34,1.12)";
-                        el.style.transform = `rotate(${targetDeg}deg)`;
-                        setTimeout(() => {
-                            el.style.transition = "";
-                            onDone();
-                        }, 3300);
-                    });
-                });
+                el.style.transition = "";
+                try {
+                    const anim = el.animate([{ transform: `rotate(${fromDeg}deg)` }, { transform: `rotate(${targetDeg}deg)` }], { duration: 3200, easing: "cubic-bezier(.16,.67,.34,1.12)", fill: "forwards" });
+                    anim.onfinish = () => { el.style.transform = `rotate(${targetDeg}deg)`; onDone(); };
+                } catch (e) {
+                    el.style.transform = `rotate(${targetDeg}deg)`;
+                    setTimeout(onDone, 200);
+                }
             };
             if (combo) {
                 if (!spend(50, "3 l\u01b0\u1ee3t quay")) return setSheet({ type: "topup" });
@@ -2854,15 +2859,13 @@ function TextReader({ b, seq }) {
                     React.createElement(ChevronLeft, { size: 22, color: th.text })),
                 React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                     React.createElement("div", { className: "clamp1", style: { fontWeight: 600, fontSize: 14 } }, b.title),
-                    React.createElement("div", { style: { fontSize: 11, color: th.sub } },
+                    React.createElement("div", { style: { fontSize: 11, color: th.sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } },
                         ch.title,
                         " \u00B7 ",
                         seq,
                         "/",
                         b.chapters.length)),
-                React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", fontSize: 10, color: C.jade, fontWeight: 700, gap: 1, flexShrink: 0 } },
-                    React.createElement("span", null, "\u25CF " + (ch.priceCoin || 0) + " xu"),
-                    React.createElement("span", { style: { color: "#FFB23E" } }, "\uD83D\uDD25 " + Math.round((b.rating || 4.5) * 20))),
+                
                 React.createElement("button", { onClick: () => setSheet({ type: "toc", bid: b.id, seq }), style: { color: th.text } },
                     React.createElement(List, { size: 19 })),
                 React.createElement("button", { onClick: () => { const bk = b.id + ":" + seq; setBookmarks((s) => { const n = new Set(s); n.has(bk) ? n.delete(bk) : n.add(bk); flash(n.has(bk) ? "Đã đánh dấu chương" : "Đã bỏ đánh dấu"); return n; }); }, "aria-label": "Đánh dấu", style: { color: bookmarks.has(b.id + ":" + seq) ? C.gold : th.text } },
@@ -2894,7 +2897,8 @@ function TextReader({ b, seq }) {
                             cs.length > 0 && React.createElement("span", {
                                 onClick: (e) => { e.stopPropagation(); setSheet({ type: "para", bid: b.id, seq, idx: i }); },
                                 style: { fontSize: 10, color: "#E8140C", border: "1px solid rgba(232,20,12,0.45)", borderRadius: 3, padding: "0 3px", marginLeft: 4, verticalAlign: "middle", cursor: "pointer", userSelect: "none", background: "transparent", lineHeight: "1.4", display: "inline" }
-                            }, cs.length)));
+                            }, cs.length)),
+                        cs.length >= 4 && (function(){ var top = cs.slice().sort(function(a,z){return (z.l||0)-(a.l||0);})[0]; return React.createElement("div", { onClick: function(e){ e.stopPropagation(); setSheet({ type: "para", bid: b.id, seq: seq, idx: i }); }, style: { marginTop: 9, padding: "9px 11px", borderRadius: 9, background: th.soft + "77", borderLeft: "2px solid " + C.jade, cursor: "pointer" } }, React.createElement("div", { className: "flex items-center", style: { justifyContent: "space-between", marginBottom: 4 } }, React.createElement("div", { className: "flex items-center", style: { gap: 6 } }, React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: C.jade, background: C.jade + "1A", padding: "1px 6px", borderRadius: 3 } }, "N\u1ED5i b\u1EADt"), React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: th.text } }, top.u || "\u0110\u1EA1o h\u1EEFu")), React.createElement("span", { style: { fontSize: 10, color: th.sub } }, "\u2661 " + (top.l || 0))), React.createElement("div", { className: "clamp3", style: { fontSize: 12, color: th.sub, lineHeight: 1.5 } }, top.x), cs.length > 1 && React.createElement("div", { style: { fontSize: 10, color: C.jade, marginTop: 5, fontWeight: 600 } }, cs.length + " b\u00ECnh lu\u1EADn \u0111o\u1EA1n n\u00E0y")); })())
                 }),
                 React.createElement("div", { style: { marginTop: 24, padding: "10px 14px", borderRadius: 10, background: th.soft + "88", border: `1px solid ${C.jade}22` } },
                     React.createElement("div", { className: "flex items-center", style: { gap: 6, marginBottom: 6 } },
