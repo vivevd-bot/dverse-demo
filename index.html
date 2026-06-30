@@ -703,21 +703,28 @@ function detectTelco(phone) {
 function DVLogin(props) {
   var s1 = React.useState("phone"), step = s1[0], setStep = s1[1];
   var s2 = React.useState(""), phone = s2[0], setPhone = s2[1];
-  var s3 = React.useState("000000"), code = s3[0], setCode = s3[1];
+  var s3 = React.useState(""), code = s3[0], setCode = s3[1];
   var s4 = React.useState(""), err = s4[0], setErr = s4[1];
   var s5 = React.useState(false), busy = s5[0], setBusy = s5[1];
   var s6 = React.useState(null), showSocial = s6[0], setShowSocial = s6[1];
   var s7 = React.useState(""), socialEmail = s7[0], setSocialEmail = s7[1];
   var s8 = React.useState(""), socialName = s8[0], setSocialName = s8[1];
   var s9 = React.useState(null), telcoOffer = s9[0], setTelcoOffer = s9[1];
+  var s10 = React.useState(0), cooldown = s10[0], setCooldown = s10[1];
+  React.useEffect(function () {
+    if (cooldown <= 0) return;
+    var t = setTimeout(function () { setCooldown(cooldown - 1); }, 1000);
+    return function () { clearTimeout(t); };
+  }, [cooldown]);
   function send() {
     if (!phone) { setErr("Nhập số điện thoại"); return; }
+    if (cooldown > 0 || busy) return;
     setBusy(true); setErr("");
     DV.requestOtp(phone).then(function (r) {
       setBusy(false);
-      if (r.status === 200) { if (r.data.devCode) setCode(r.data.devCode); setStep("code"); }
-      else setErr("Không gửi được OTP");
-    }).catch(function () { setBusy(false); setErr("Không kết nối được backend. Kiểm tra DVERSE_API."); });
+      if (r.status === 200) { setStep("code"); setCooldown(30); }
+      else setErr("Không gửi được mã OTP, vui lòng thử lại");
+    }).catch(function () { setBusy(false); setErr("Không gửi được mã OTP, vui lòng thử lại"); });
   }
   function verify() {
     setBusy(true); setErr("");
@@ -728,8 +735,8 @@ function DVLogin(props) {
         var telco = alreadyShown ? null : detectTelco(phone);
         if (telco) { setTelcoOffer(telco); }
         else { props.onAuthed(null); }
-      } else setErr("OTP sai hoặc hết hạn");
-    }).catch(function () { setBusy(false); setErr("Lỗi kết nối backend"); });
+      } else setErr("Mã OTP không đúng hoặc đã hết hạn");
+    }).catch(function () { setBusy(false); setErr("Xác thực thất bại, vui lòng thử lại"); });
   }
   function activateTelco() {
     localStorage.setItem('dverse:telcoOfferShown','1');
@@ -763,10 +770,11 @@ function DVLogin(props) {
             React.createElement("input", { type: "tel", value: phone, onChange: function (e) { setPhone(e.target.value); }, placeholder: "Số điện thoại", style: inputStyle }),
             React.createElement("button", { onClick: send, disabled: busy, style: btnStyle }, busy ? "Đang gửi…" : "Gửi OTP"))
         : React.createElement(React.Fragment, null,
-            React.createElement("div", { style: { fontSize: 12, color: "#7c8a96", marginBottom: 8 } }, "Mã OTP gửi tới " + phone + " (dev: 000000)"),
+            React.createElement("div", { style: { fontSize: 12, color: "#7c8a96", marginBottom: 8 } }, "Mã OTP gửi tới " + phone),
             React.createElement("input", { type: "tel", value: code, onChange: function (e) { setCode(e.target.value); }, placeholder: "Mã OTP", style: inputStyle }),
             React.createElement("button", { onClick: verify, disabled: busy, style: btnStyle }, busy ? "Đang xác thực…" : "Vào DVERSE"),
-            React.createElement("button", { onClick: function () { setStep("phone"); }, style: { width: "100%", padding: 10, marginTop: 8, background: "none", border: "none", color: "#7c8a96", fontSize: 13, cursor: "pointer" } }, "← Đổi số")),
+            React.createElement("button", { onClick: send, disabled: busy || cooldown > 0, style: { width: "100%", padding: 10, marginTop: 8, background: "none", border: "none", color: cooldown > 0 ? "#4a5862" : "#16B9C6", fontSize: 13, cursor: cooldown > 0 ? "default" : "pointer" } }, cooldown > 0 ? ("Gửi lại mã (" + cooldown + "s)") : "Gửi lại mã"),
+            React.createElement("button", { onClick: function () { setStep("phone"); setCode(""); }, style: { width: "100%", padding: 10, marginTop: 4, background: "none", border: "none", color: "#7c8a96", fontSize: 13, cursor: "pointer" } }, "← Đổi số")),
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, margin: "18px 0 14px" } },
         React.createElement("div", { style: { flex: 1, height: 1, background: "#1f2a33" } }),
         React.createElement("span", { style: { color: "#7c8a96", fontSize: 12 } }, "hoặc"),
